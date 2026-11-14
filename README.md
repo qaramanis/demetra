@@ -1,5 +1,10 @@
 # Demetra
 
+> **Scope change (2026-11-14).** Demetra now shows real data for the cropland of California:
+> crops, estimated revenue and soil for each block of 990 m. The new scope is in
+> [`docs/scope.md`](docs/scope.md). The text below describes the first phase (mock data for
+> Greece). It will be written again with the new implementation.
+
 Demetra is a map dashboard that shows crop-rotation risk, cost and yield for each
 agricultural block. It is a NASA Space Apps 2026 project. The demo area is the Thessaly plain
 and Central Macedonia, Greece.
