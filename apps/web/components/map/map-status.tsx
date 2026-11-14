@@ -1,11 +1,12 @@
 "use client";
 
-import { DEFAULT_GRID } from "@demetra/core";
-import { LoaderCircle, MousePointerClick, PenTool, TriangleAlert, ZoomIn } from "lucide-react";
+import { LoaderCircle, MousePointerClick, SearchX, TriangleAlert, ZoomIn } from "lucide-react";
 import type { ReactNode } from "react";
+import { useMap } from "react-map-gl/maplibre";
 
 import { Button } from "@/components/ui/button";
-import { useBlocks } from "@/data/queries";
+import { DATA_BOUNDS, MAP_ID } from "@/config/regions";
+import { useBlocks, useReferenceData } from "@/data/queries";
 import { useT } from "@/i18n";
 import { useAppStore } from "@/store/app-store";
 
@@ -23,16 +24,31 @@ function Pill({ children }: { children: ReactNode }) {
 /** A short message above the map when the blocks are not visible or still load. */
 export function MapStatus() {
   const t = useT();
+  const map = useMap()[MAP_ID];
   const blocks = useBlocks();
-  const setGrid = useAppStore((state) => state.setGrid);
+  const reference = useReferenceData();
   const hasSelected = useAppStore((state) => state.hasSelected);
-  const drawing = useAppStore((state) => state.drawing);
+  const hasFilter = useAppStore((state) => state.cropCode !== null || state.countyFips !== null);
 
-  if (drawing) {
+  const goToData = () => {
+    const [west, south, east, north] = DATA_BOUNDS;
+    map?.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 24, duration: 1200 },
+    );
+  };
+
+  if (blocks.status === "outside") {
     return (
       <Pill>
-        <PenTool />
-        {t("draw.hint")}
+        <TriangleAlert />
+        {t("map.outside")}
+        <Button variant="outline" size="xs" onClick={goToData}>
+          {t("map.goToData")}
+        </Button>
       </Pill>
     );
   }
@@ -46,19 +62,8 @@ export function MapStatus() {
     );
   }
 
-  if (blocks.status === "outside") {
-    return (
-      <Pill>
-        <TriangleAlert />
-        {t("map.outsideGrid")}
-        <Button variant="outline" size="xs" onClick={() => setGrid(DEFAULT_GRID)}>
-          {t("map.useGlobalGrid")}
-        </Button>
-      </Pill>
-    );
-  }
-
-  if (blocks.isError) {
+  // The blocks cannot load without the list of years.
+  if (blocks.isError || reference.isError) {
     return (
       <Pill>
         <TriangleAlert />
@@ -67,7 +72,8 @@ export function MapStatus() {
     );
   }
 
-  if (blocks.isFetching) {
+  // `idle`: the map or the list of years is not ready, so the first request did not start.
+  if (blocks.isFetching || blocks.status === "idle") {
     return (
       <Pill>
         <LoaderCircle className="animate-spin" />
@@ -76,8 +82,20 @@ export function MapStatus() {
     );
   }
 
+  if (!blocks.data) return null;
+
+  if (blocks.data.features.length === 0) {
+    return (
+      <Pill>
+        <SearchX />
+        {/* Without a crop filter and a county filter, the area has no cropland. */}
+        {t(hasFilter ? "map.noMatch" : "map.noBlocks")}
+      </Pill>
+    );
+  }
+
   // Tell a new user what to do, until the first selection.
-  if (blocks.data && !hasSelected) {
+  if (!hasSelected) {
     return (
       <Pill>
         <MousePointerClick />

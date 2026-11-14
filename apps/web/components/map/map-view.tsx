@@ -2,31 +2,26 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { METRIC_IDS } from "@demetra/core";
-import type { MetricValues } from "@demetra/core";
+import type { BlockProperties } from "@demetra/core";
+import type { Polygon } from "geojson";
 import * as maplibregl from "maplibre-gl";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import Map, {
   AttributionControl,
   NavigationControl,
   ScaleControl,
   type MapLayerMouseEvent,
+  type MapProps,
   type MapRef,
 } from "react-map-gl/maplibre";
 
 import { BASEMAP_STYLES } from "@/config/basemaps";
-import { INITIAL_VIEW, MAP_ID } from "@/config/regions";
+import { DATA_BOUNDS, MAP_ID } from "@/config/regions";
 import { useBlocks } from "@/data/queries";
 import { useAppStore } from "@/store/app-store";
 import { useHoverStore } from "@/store/hover-store";
 
-import { BLOCKS_FILL_LAYER, BlocksLayer } from "./blocks-layer";
-import {
-  CUSTOM_FIELDS_FILL_LAYER,
-  CUSTOM_FIELDS_SOURCE,
-  CustomFieldsLayer,
-} from "./custom-fields-layer";
-import { FieldDrawing } from "./field-drawing";
+import { BLOCKS_FILL_LAYER, BlocksLayer, LINES_MIN_ZOOM } from "./blocks-layer";
 import { KeepSelectionVisible } from "./keep-selection-visible";
 import { SelectionLayer } from "./selection-layer";
 import { useLabelLayerId } from "./use-label-layer";
@@ -38,10 +33,16 @@ maplibregl.setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", impor
 /** Web Mercator has no data nearer to the poles than this latitude. */
 const MAX_LATITUDE = 85;
 
-/** A field polygon of the user is above the blocks, so it gets the pointer first. */
-const INTERACTIVE_LAYERS = [CUSTOM_FIELDS_FILL_LAYER, BLOCKS_FILL_LAYER];
-/** While the user draws, the pointer belongs to the drawing. */
-const NO_LAYERS: string[] = [];
+const [WEST, SOUTH, EAST, NORTH] = DATA_BOUNDS;
+
+/** First view of the map: the area that has data. */
+const INITIAL_VIEW: NonNullable<MapProps["initialViewState"]> = {
+  bounds: [WEST, SOUTH, EAST, NORTH],
+  fitBoundsOptions: { padding: 24 },
+};
+
+/** The layers that get the pointer. */
+const INTERACTIVE_LAYERS = [BLOCKS_FILL_LAYER];
 
 type MapInstance = ReturnType<MapRef["getMap"]>;
 
@@ -58,13 +59,15 @@ function readViewport(map: MapInstance) {
   };
 }
 
-function metricValuesOf(properties: Record<string, unknown>): MetricValues | null {
-  const values = {} as MetricValues;
-  for (const id of METRIC_IDS) {
-    const value = properties[id];
-    if (typeof value !== "number") return null;
-    values[id] = value;
-  }
+/** The values of a rendered block. The result is `null` when a necessary value is absent. */
+function blockPropertiesOf(properties: Record<string, unknown>): BlockProperties | null {
+  const { id, crop, share, crops, acres, revenue, storie } = properties;
+  if (typeof id !== "string" || typeof crop !== "number" || typeof share !== "number") return null;
+  if (typeof crops !== "number" || typeof acres !== "number") return null;
+  const values: BlockProperties = { id, crop, share, crops, acres };
+  // A block without revenue data or soil data does not have these properties.
+  if (typeof revenue === "number") values.revenue = revenue;
+  if (typeof storie === "number") values.storie = storie;
   return values;
 }
 
@@ -73,21 +76,32 @@ export default function MapView() {
   const basemap = useAppStore((state) => state.basemap);
   const setViewport = useAppStore((state) => state.setViewport);
   const select = useAppStore((state) => state.select);
-  const drawing = useAppStore((state) => state.drawing);
-  const customFields = useAppStore((state) => state.customFields);
   const setHovered = useHoverStore((state) => state.setHovered);
 
   const blocks = useBlocks();
   const labelLayerId = useLabelLayerId(basemap);
 
-  /** The feature that has the hover state on the map. */
-  const hoveredRef = useRef<{ source: string; id: string } | null>(null);
+  /**
+   * The original geometry of each block, by block id. One answer can have 86,623 blocks, so
+   * a click does not search the full list. In this file `Map` is the map component, so the
+   * index uses `globalThis.Map`.
+   */
+  const geometryById = useMemo(() => {
+    const index = new globalThis.Map<string, Polygon>();
+    for (const feature of blocks.data?.features ?? []) {
+      index.set(feature.properties.id, feature.geometry);
+    }
+    return index;
+  }, [blocks.data]);
+
+  /** The block under the pointer. `state` = the block has the hover state on the map. */
+  const hoveredRef = useRef<{ source: string; id: string; state: boolean } | null>(null);
 
   /** The width of the map before the last change of its size. */
   const widthRef = useRef<number | null>(null);
 
   /**
-   * MapLibre keeps the centre of the view when the map gets a new size. The content then
+   * MapLibre keeps the center of the view when the map gets a new size. The content then
    * moves sideways when the detail panel opens or closes. Keep the left edge in its place.
    */
   const keepLeftEdge = useCallback((map: MapInstance) => {
@@ -102,7 +116,7 @@ export default function MapView() {
   const clearHover = useCallback(
     (map: MapInstance) => {
       const previous = hoveredRef.current;
-      if (previous && map.getSource(previous.source)) {
+      if (previous?.state && map.getSource(previous.source)) {
         map.setFeatureState(previous, { hover: false });
       }
       hoveredRef.current = null;
@@ -116,51 +130,45 @@ export default function MapView() {
     (event: MapLayerMouseEvent) => {
       const map = event.target;
       const feature = event.features?.[0];
-      const id = feature?.properties?.id as string | undefined;
-      if (!feature || !id) {
+      const properties = feature ? blockPropertiesOf(feature.properties) : null;
+      if (!feature || !properties) {
         if (hoveredRef.current) clearHover(map);
         return;
       }
 
+      const { id } = properties;
       const previous = hoveredRef.current;
       if (previous?.id !== id || previous.source !== feature.source) {
-        if (previous && map.getSource(previous.source)) {
+        if (previous?.state && map.getSource(previous.source)) {
           map.setFeatureState(previous, { hover: false });
         }
-        hoveredRef.current = { source: feature.source, id };
-        map.setFeatureState(hoveredRef.current, { hover: true });
+        // A change of the hover state makes MapLibre send the paint data of the full tile to
+        // the graphics card again. At a low zoom one tile has most of the blocks of the
+        // state, so there the map shows only the tooltip. The hover line starts at the same
+        // zoom.
+        const state = map.getZoom() >= LINES_MIN_ZOOM;
+        hoveredRef.current = { source: feature.source, id, state };
+        if (state) map.setFeatureState(hoveredRef.current, { hover: true });
         map.getCanvas().style.cursor = "pointer";
       }
-      setHovered({
-        id,
-        x: event.point.x,
-        y: event.point.y,
-        values: metricValuesOf(feature.properties),
-      });
+      setHovered({ x: event.point.x, y: event.point.y, properties });
     },
     [clearHover, setHovered],
   );
 
   const onClick = useCallback(
     (event: MapLayerMouseEvent) => {
-      // A click adds a corner to the polygon while the user draws.
-      if (drawing) return;
       const feature = event.features?.[0];
       const id = feature?.properties?.id as string | undefined;
       if (!feature || !id) {
         select(null);
         return;
       }
-      if (feature.source === CUSTOM_FIELDS_SOURCE) {
-        const field = customFields.find((item) => item.id === id);
-        if (field) select(field);
-        return;
-      }
       // The geometry of a rendered feature is cut at the tile edges. Use the original block.
-      const block = blocks.data?.features.find((item) => item.properties.id === id);
-      if (block) select({ id, kind: "cell", geometry: block.geometry });
+      const geometry = geometryById.get(id);
+      if (geometry) select({ id, geometry });
     },
-    [blocks.data, customFields, drawing, select],
+    [geometryById, select],
   );
 
   return (
@@ -177,7 +185,7 @@ export default function MapView() {
       touchPitch={false}
       maxPitch={0}
       attributionControl={false}
-      interactiveLayerIds={drawing ? NO_LAYERS : INTERACTIVE_LAYERS}
+      interactiveLayerIds={INTERACTIVE_LAYERS}
       onLoad={(event) => {
         event.target.touchZoomRotate.disableRotation();
         widthRef.current = event.target.getContainer().clientWidth;
@@ -193,12 +201,11 @@ export default function MapView() {
     >
       <AttributionControl compact position="bottom-right" />
       <NavigationControl position="bottom-right" showCompass={false} />
-      <ScaleControl position="bottom-right" unit="metric" />
+      {/* The areas of the data are in acres, so the scale shows miles and feet. */}
+      <ScaleControl position="bottom-right" unit="imperial" />
 
       <BlocksLayer data={blocks.data} beforeId={labelLayerId} />
-      <CustomFieldsLayer beforeId={labelLayerId} />
       <SelectionLayer beforeId={labelLayerId} />
-      <FieldDrawing />
       <KeepSelectionVisible />
     </Map>
   );

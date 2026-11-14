@@ -9,13 +9,19 @@ the list of code to remove and to keep.
 
 ## State of the code
 
-The code in this repository is from the first phase (mock data for Greece, a different scope).
-Its data model is being replaced. Do not extend the mock provider, the six metrics, the five
-crops, the UTM and EEA grids, the rotation strategies or the tool that draws custom fields.
+The first version for this scope is implemented (2026-11-15). The code of the first phase is
+removed: the mock provider, the six metrics, the five crops, the UTM and EEA grids, the
+rotation strategies and the tool that draws custom fields. Do not add it again.
 
 - `apps/web` — the Next.js dashboard. Its own `AGENTS.md` applies there, not here.
-- `packages/core` — shared types and config. The old domain code here is to be replaced.
-- `packages/providers/mock` — the old mock provider. To be removed.
+  - `app/api/` — the GET Route Handlers that the browser calls: `reference`, `blocks` and
+    `blocks/[id]`.
+  - `data/api.ts` and `data/queries.ts` — the requests to these routes and the TanStack Query
+    hooks.
+- `packages/core` — shared types and constants: the contract between the server code and the
+  interface.
+- `packages/db` — Drizzle ORM: the schema, the client and the query functions
+  (`src/queries/`). Server code only.
 
 ## Data
 

@@ -64,6 +64,23 @@ Postgres 17 with PostGIS 3.7, in Docker Desktop.
 | Host and port | `127.0.0.1:5433` (local access only) |
 | Database / user | `cropland` / `cropland` |
 | Password | `POSTGRES_PASSWORD` in `/Users/apostoloskaramanis/Downloads/cdl_soil_unified/db/.env` |
+| Drizzle Studio | container `demetra-studio` in the same stack, `127.0.0.1:4983` |
+
+### Copy in Neon
+
+A copy of the 2017 data is in a Neon database (added on 2026-11-15): the same four tables, the
+same rows, the same indexes and the view.
+
+| Item | Value |
+|---|---|
+| Project / branch / database | `demetra` / `production` / `neondb` |
+| Version | PostgreSQL 18 with PostGIS 3.6 |
+| Plan | Launch (pay for use). One year is approximately 250 MB. |
+| Connection string | `NEON_DATABASE_URL` in `/Users/apostoloskaramanis/Downloads/cdl_soil_unified/db/.env.neon` |
+
+- `load_year.sh` loads the local database only. It does not load Neon.
+- To use Neon in the application, put the connection string in `DATABASE_URL` in
+  `apps/web/.env.local`. It works with no other change.
 
 ### Tables
 
@@ -112,7 +129,7 @@ The first implementation was for a different scope (mock data, Greece, vegetatio
 rotation metrics). Its data model is removed. This is not a completely new start: the reusable
 components stay.
 
-### Remove
+### Removed (2026-11-15)
 
 - `packages/providers/mock` and the "Mock data" badge
 - The six metrics in `packages/core/src/config/metrics.ts` and their ranking code
@@ -123,7 +140,7 @@ components stay.
 - The tool that draws custom fields (the draw button, the drawing code, the custom fields layer
   and the `terra-draw` packages). It can come back later as an extra feature.
 
-### Keep and adapt
+### Kept and adapted
 
 - The Next.js project, the pnpm workspace and the build setup
 - The map (MapLibre), the two basemaps and the place search
@@ -131,7 +148,7 @@ components stay.
 - The layout of the filters sidebar, the legend and the detail panel
 - The TanStack Query hooks, the Zustand stores and `apps/web/i18n/en.json`
 
-### First version (2017 data)
+### First version (2017 data, implemented on 2026-11-15)
 
 - **Map layers (three, decided):** main crop of each block (crop colors from `crops.color`),
   revenue per acre, soil quality (Storie index).
@@ -163,22 +180,47 @@ Possible with the 2017 data:
 ### Technical points
 
 - A browser cannot connect to Postgres. The queries run in server code of the Next.js application.
+- The browser reads the data through three GET Route Handlers (`/api/reference`, `/api/blocks`,
+  `/api/blocks/<id>`) with TanStack Query. They are not Server Functions (`"use server"`): Next.js
+  runs Server Functions one at a time and recommends Route Handlers for requests that read data.
 - The map requests only the blocks in the visible area (`geom && ST_MakeEnvelope(...)`), with a limit
-  on the number of blocks. The full state has 86,623 blocks.
+  on the number of blocks (`MAX_BLOCKS`, 100,000). The full state has 86,623 blocks, so the first
+  view shows all of them. This answer has approximately 25 MB and takes less than 1 second.
+- With a crop or county filter, the values of a block are the values of the crops that agree with
+  the filter. The main crop of a block is the crop class with the most cells.
 - Do not read the database in a `useEffect` hook. Use TanStack Query or server components.
 - The database connection string goes in an environment file that is not committed.
 
-### Drizzle (decided, not installed yet)
+### Drizzle (installed on 2026-11-15)
 
-- **In the application:** Drizzle ORM for all database queries.
-- **In Docker:** a Drizzle Studio container in the `demetra` stack. The user opens it at
-  `https://local.drizzle.studio/`.
-- **Port:** Drizzle Studio uses local port 4983 by default. The container `adrenaline-spike-studio`
-  of a different project uses that port when it runs. If the two must run at the same time, use a
-  different port for Demetra (for example 4984, opened as `https://local.drizzle.studio/?port=4984`).
-- **Tables:** the tables exist already, and the pipeline (`schema.sql`, `load_year.sh`) makes and
-  loads them. Make the Drizzle schema from the database (`drizzle-kit pull`). Do not let Drizzle
-  change or delete these tables, and keep the PostGIS system tables out of its control.
+The package `packages/db` (`@demetra/db`) has the Drizzle setup. It is for server code only.
+
+| File | Content |
+|---|---|
+| `src/schema.ts` | The tables `blocks`, `blockCrops`, `crops`, `counties` and the view `blockMainCrop`, from `drizzle-kit pull` |
+| `src/relations.ts` | The relations, for `db.query` and for Drizzle Studio |
+| `src/client.ts` | The client `db` (driver `postgres`). It reads `DATABASE_URL`. |
+| `src/queries/` | The query functions of the application |
+| `drizzle.config.ts`, `load-env.ts` | The config for drizzle-kit. It reads `apps/web/.env.local`. |
+
+- **Tables:** the pipeline (`schema.sql`, `load_year.sh`) makes and loads the tables. Drizzle only
+  reads them. Do not add `drizzle-kit generate`, `migrate` or `push`. The config keeps the PostGIS
+  system tables out.
+- **After a change of the tables:** run `pnpm db:pull`. It writes the schema of the database to
+  `packages/db/pulled/` (not committed). Compare it with `src/schema.ts` and copy the changes. The
+  top of `src/schema.ts` lists the differences that must stay.
+- **Geometry:** Drizzle can decode only PostGIS points. Do not select `blocks.geom` directly. Use
+  `ST_AsGeoJSON(geom)` in the query.
+- **Drizzle Studio in Docker:** the service `studio` (container `demetra-studio`) in the `demetra`
+  stack shows the local database. Open `https://local.drizzle.studio/`. It starts with Docker. The
+  service is in `docker-compose.yml` of the pipeline, and it mounts this repository as read-only.
+  `pnpm db:studio:logs` shows its log.
+- **Drizzle Studio for a different database:** `pnpm db:studio` starts Drizzle Studio on the host
+  with the database of `apps/web/.env.local` (for example Neon), on port 4984. Open
+  `https://local.drizzle.studio/?port=4984`.
+- **Port:** the container uses local port 4983, the default of Drizzle Studio. The container
+  `adrenaline-spike-studio` of a different project uses the same port. To run the two at the same
+  time, set `STUDIO_PORT=4984` in the `.env` file of the pipeline `db/` folder.
 
 ## Decisions
 

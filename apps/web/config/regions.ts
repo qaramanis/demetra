@@ -5,8 +5,8 @@ import type { MessageKey } from "@/i18n";
 /** The id of the map in `MapProvider`. */
 export const MAP_ID = "fieldMap";
 
-/** First view of the map: Larissa. */
-export const INITIAL_VIEW = { longitude: 22.42, latitude: 39.64, zoom: 9 } as const;
+/** The area that has data: California. It is also the first view of the map. */
+export const DATA_BOUNDS: BBox = [-124.4, 32.5, -114.2, 42.05];
 
 export interface RegionPreset {
   id: string;
@@ -14,12 +14,14 @@ export interface RegionPreset {
   bbox: BBox;
 }
 
-/** The demo areas. */
+/** The areas that the user can go to with one click. */
 export const REGION_PRESETS: readonly RegionPreset[] = [
-  { id: "thessaly", labelKey: "regions.thessaly", bbox: [21.6, 39.15, 22.95, 39.9] },
+  { id: "california", labelKey: "regions.california", bbox: DATA_BOUNDS },
+  { id: "centralValley", labelKey: "regions.centralValley", bbox: [-122.6, 34.95, -118.6, 40.7] },
+  { id: "salinasValley", labelKey: "regions.salinasValley", bbox: [-121.85, 35.95, -120.8, 36.9] },
   {
-    id: "centralMacedonia",
-    labelKey: "regions.centralMacedonia",
-    bbox: [22.1, 40.25, 23.75, 41.2],
+    id: "imperialValley",
+    labelKey: "regions.imperialValley",
+    bbox: [-115.95, 32.62, -115.05, 33.35],
   },
 ];

@@ -1,8 +1,9 @@
 packages:
   - apps/*
   - packages/core
-  - packages/providers/*
+  - packages/db
 
 allowBuilds:
+  esbuild: true
   sharp: false
   unrs-resolver: false

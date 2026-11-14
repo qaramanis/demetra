@@ -1,13 +1,13 @@
 "use client";
 
-import { CROP_IDS, GRIDS, GRID_IDS, METRIC_IDS } from "@demetra/core";
-import type { CropId, GridId } from "@demetra/core";
-import { Check } from "lucide-react";
+import { MAP_LAYER_IDS } from "@demetra/core";
+import type { County, Crop } from "@demetra/core";
+import { Check, X } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
-import { MetricSwatch } from "@/components/metrics/metric-swatch";
+import { LayerSwatch } from "@/components/layers/layer-swatch";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -15,17 +15,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { SEASONS } from "@/config/period";
-import { useBlocks } from "@/data/queries";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useBlockFilters, useBlocks, useReferenceData } from "@/data/queries";
 import { useT, type MessageKey } from "@/i18n";
-import { formatCellSize, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 
-const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+/** The limits of the data, in the order of the note "About the data". */
+const LIMIT_KEYS: readonly MessageKey[] = [
+  "limits.countyAverages",
+  "limits.grain",
+  "limits.noRevenue",
+  "limits.cropClasses",
+  "limits.soil",
+  "limits.noCosts",
+];
 
-const monthKey = (month: number) => `month.${month}` as MessageKey;
+// "All crops" and "All counties" have the value `null`, the same value as in the store. For a
+// `null` value, Base UI gives the trigger the placeholder style. These items are normal
+// choices, so their text keeps the normal color.
+const TRIGGER_CLASS = "w-full data-placeholder:text-foreground";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = useId();
@@ -39,30 +49,30 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** The metric that gives the blocks and the legend their colours. */
-function MetricFilter() {
+/** The layer that gives the blocks and the legend their colors. */
+function LayerFilter() {
   const t = useT();
-  const metric = useAppStore((state) => state.metric);
-  const setMetric = useAppStore((state) => state.setMetric);
+  const layer = useAppStore((state) => state.layer);
+  const setLayer = useAppStore((state) => state.setLayer);
 
   return (
     <div className="-mx-2 flex flex-col gap-0.5">
-      {METRIC_IDS.map((id) => {
-        const active = id === metric;
+      {MAP_LAYER_IDS.map((id) => {
+        const active = id === layer;
         return (
           <button
             key={id}
             type="button"
             aria-pressed={active}
-            onClick={() => setMetric(id)}
+            onClick={() => setLayer(id)}
             className={cn(
               "flex h-9 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors outline-none",
               "hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50",
               active && "bg-accent font-medium",
             )}
           >
-            <MetricSwatch metric={id} />
-            <span className="min-w-0 flex-1 truncate">{t(`metric.${id}.name`)}</span>
+            <LayerSwatch layer={id} />
+            <span className="min-w-0 flex-1 truncate">{t(`layer.${id}.name`)}</span>
             {active && <Check className="size-4 shrink-0" />}
           </button>
         );
@@ -71,21 +81,22 @@ function MetricFilter() {
   );
 }
 
-function CropFilter() {
+/** The year of the data. The list has only the years that have data. */
+function YearFilter({ years }: { years: readonly number[] }) {
   const t = useT();
-  const crop = useAppStore((state) => state.crop);
-  const setCrop = useAppStore((state) => state.setCrop);
-  const items = CROP_IDS.map((id) => ({ value: id, label: t(`crop.${id}`) }));
+  const year = useBlockFilters()?.year ?? null;
+  const setYear = useAppStore((state) => state.setYear);
+  const items = years.map((value) => ({ value, label: String(value) }));
 
   return (
     <Select
       items={items}
-      value={crop}
+      value={year}
       onValueChange={(value) => {
-        if (value) setCrop(value as CropId);
+        if (value !== null) setYear(value);
       }}
     >
-      <SelectTrigger className="w-full" aria-label={t("filters.crop")}>
+      <SelectTrigger className="w-full" aria-label={t("filters.year")}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -99,140 +110,139 @@ function CropFilter() {
   );
 }
 
-/** One growing season: a year and a range of months. */
-function PeriodFilter() {
+/** One crop class, or all crops. Each crop class has a swatch of its color on the map. */
+function CropFilter({ crops }: { crops: readonly Crop[] }) {
   const t = useT();
-  const period = useAppStore((state) => state.period);
-  const setPeriod = useAppStore((state) => state.setPeriod);
-  const years = SEASONS.map((year) => ({ value: year, label: String(year) }));
+  const cropCode = useAppStore((state) => state.cropCode);
+  const setCropCode = useAppStore((state) => state.setCropCode);
+  const items = [
+    { value: null, label: t("common.allCrops"), color: null },
+    ...crops.map((crop) => ({ value: crop.code, label: crop.name, color: crop.color })),
+  ];
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <Select
-          items={years}
-          value={period.year}
-          onValueChange={(year) => {
-            if (year) setPeriod({ ...period, year });
-          }}
-        >
-          <SelectTrigger className="w-24" aria-label={t("filters.year")}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-sm tabular-nums">
-          {t(monthKey(period.startMonth))}
-          {period.endMonth !== period.startMonth && ` – ${t(monthKey(period.endMonth))}`}
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Slider
-          min={1}
-          max={12}
-          step={1}
-          value={[period.startMonth, period.endMonth]}
-          thumbLabels={[t("filters.firstMonth"), t("filters.lastMonth")]}
-          onValueChange={(value) => {
-            if (!Array.isArray(value)) return;
-            const [startMonth, endMonth] = value;
-            if (startMonth === undefined || endMonth === undefined) return;
-            setPeriod({ ...period, startMonth, endMonth });
-          }}
-        />
-        <div aria-hidden="true" className="flex justify-between px-[3px]">
-          {MONTHS.map((month) => (
+    <Select items={items} value={cropCode} onValueChange={(value) => setCropCode(value)}>
+      <SelectTrigger className={TRIGGER_CLASS} aria-label={t("filters.crop")}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map((item) => (
+          <SelectItem key={item.value ?? "all"} value={item.value}>
+            {/* "All crops" has an empty swatch, so that all names start at the same position. */}
             <span
-              key={month}
+              aria-hidden="true"
               className={cn(
-                "w-1.5 text-center text-[0.65rem] leading-none",
-                month >= period.startMonth && month <= period.endMonth
-                  ? "text-foreground"
-                  : "text-muted-foreground/70",
+                "size-3 shrink-0 self-center rounded-[3px]",
+                item.color && "ring-1 ring-foreground/10",
               )}
-            >
-              {t(monthKey(month)).charAt(0)}
-            </span>
-          ))}
-        </div>
+              style={item.color ? { backgroundColor: item.color } : undefined}
+            />
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** One county, or all counties. */
+function CountyFilter({ counties }: { counties: readonly County[] }) {
+  const t = useT();
+  const countyFips = useAppStore((state) => state.countyFips);
+  const setCountyFips = useAppStore((state) => state.setCountyFips);
+  const items = [
+    { value: null, label: t("common.allCounties") },
+    ...counties.map((county) => ({ value: county.fips, label: county.name })),
+  ];
+
+  return (
+    <Select items={items} value={countyFips} onValueChange={(value) => setCountyFips(value)}>
+      <SelectTrigger className={TRIGGER_CLASS} aria-label={t("filters.county")}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map((item) => (
+          <SelectItem key={item.value ?? "all"} value={item.value}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** Removes the crop filter and the county filter. It shows only when one of them is set. */
+function ClearFilters() {
+  const t = useT();
+  const active = useAppStore((state) => state.cropCode !== null || state.countyFips !== null);
+  const setCropCode = useAppStore((state) => state.setCropCode);
+  const setCountyFips = useAppStore((state) => state.setCountyFips);
+
+  if (!active) return null;
+
+  return (
+    <Button
+      variant="ghost"
+      size="xs"
+      className="-ml-2 self-start text-muted-foreground"
+      onClick={() => {
+        setCropCode(null);
+        setCountyFips(null);
+      }}
+    >
+      <X />
+      {t("filters.clear")}
+    </Button>
+  );
+}
+
+/** The filters that offer the values of the reference data: year, crop class and county. */
+function DataFilters() {
+  const t = useT();
+  const reference = useReferenceData();
+  const data = reference.data;
+
+  if (!data && reference.isError) {
+    return (
+      <div role="alert" className="flex flex-col items-start gap-2 rounded-lg border p-3 text-sm">
+        {t("filters.error")}
+        <Button variant="outline" size="sm" onClick={() => reference.refetch()}>
+          {t("filters.retry")}
+        </Button>
       </div>
-    </div>
+    );
+  }
+
+  // While the reference data loads, a skeleton with the size of a select is in its position.
+  const skeleton = <Skeleton className="h-8 rounded-lg" />;
+
+  return (
+    <>
+      <Section title={t("filters.year")}>
+        {data ? <YearFilter years={data.years} /> : skeleton}
+      </Section>
+      <Section title={t("filters.crop")}>
+        {data ? <CropFilter crops={data.crops} /> : skeleton}
+      </Section>
+      <Section title={t("filters.county")}>
+        {data ? <CountyFilter counties={data.counties} /> : skeleton}
+        <ClearFilters />
+      </Section>
+    </>
   );
 }
 
-function IrrigationFilter() {
+/** The limits of the data and its sources. */
+function DataLimits() {
   const t = useT();
-  const irrigation = useAppStore((state) => state.irrigation);
-  const setIrrigation = useAppStore((state) => state.setIrrigation);
-
   return (
-    <SegmentedControl
-      stretch
-      ariaLabel={t("filters.irrigation")}
-      value={irrigation}
-      onChange={setIrrigation}
-      options={[
-        { value: "irrigated", label: t("irrigation.irrigated") },
-        { value: "rainfed", label: t("irrigation.rainfed") },
-      ]}
-    />
-  );
-}
-
-/** The grid that divides the land into blocks, and the size of its cells. */
-function GridFilter() {
-  const t = useT();
-  const grid = useAppStore((state) => state.grid);
-  const setGrid = useAppStore((state) => state.setGrid);
-  const items = GRID_IDS.map((id) => ({ value: id, label: t(`grid.${id}.name`) }));
-  const sizes = GRIDS[grid.gridId].cellSizes;
-
-  return (
-    <div className="flex flex-col gap-2">
-      <Select
-        items={items}
-        value={grid.gridId}
-        onValueChange={(value) => {
-          if (!value) return;
-          const gridId = value as GridId;
-          const cellSizes = GRIDS[gridId].cellSizes;
-          // Keep the cell size when the new grid has it.
-          const cellSize = cellSizes.includes(grid.cellSize)
-            ? grid.cellSize
-            : (cellSizes[0] ?? grid.cellSize);
-          setGrid({ gridId, cellSize });
-        }}
-      >
-        <SelectTrigger className="w-full" aria-label={t("filters.grid")}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <SegmentedControl
-        stretch
-        ariaLabel={t("filters.cellSize")}
-        value={String(grid.cellSize)}
-        onChange={(value) => setGrid({ ...grid, cellSize: Number(value) })}
-        options={sizes.map((size) => ({ value: String(size), label: formatCellSize(size) }))}
-      />
-
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        {t(`grid.${grid.gridId}.hint`)}
-      </p>
+    <div className="flex flex-col gap-2 text-xs leading-relaxed text-muted-foreground">
+      <ul className="flex list-disc flex-col gap-1 pl-4">
+        {LIMIT_KEYS.map((key) => (
+          <li key={key}>{t(key)}</li>
+        ))}
+      </ul>
+      <p>{t("limits.sources")}</p>
     </div>
   );
 }
@@ -243,8 +253,8 @@ function BlockCount() {
   const blocks = useBlocks();
 
   let text = "";
-  if (blocks.status === "tooMany") text = t("map.zoomIn");
-  else if (blocks.status === "outside") text = t("map.outsideGrid");
+  if (blocks.status === "tooMany") text = t("filters.tooMany");
+  else if (blocks.status === "outside") text = t("filters.outside");
   else if (blocks.data) {
     text = t("filters.blocksInView", { count: formatNumber(blocks.data.features.length) });
   }
@@ -256,7 +266,7 @@ function BlockCount() {
   );
 }
 
-/** The left sidebar: the active metric and the filters that change the values. */
+/** The left sidebar: the map layer, the filters and the limits of the data. */
 export function FiltersSidebar() {
   const t = useT();
   const open = useAppStore((state) => state.filtersOpen);
@@ -272,20 +282,12 @@ export function FiltersSidebar() {
     >
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-6 p-4">
-          <Section title={t("filters.metric")}>
-            <MetricFilter />
+          <Section title={t("filters.layer")}>
+            <LayerFilter />
           </Section>
-          <Section title={t("filters.crop")}>
-            <CropFilter />
-          </Section>
-          <Section title={t("filters.period")}>
-            <PeriodFilter />
-          </Section>
-          <Section title={t("filters.irrigation")}>
-            <IrrigationFilter />
-          </Section>
-          <Section title={t("filters.grid")}>
-            <GridFilter />
+          <DataFilters />
+          <Section title={t("limits.title")}>
+            <DataLimits />
           </Section>
         </div>
       </ScrollArea>

@@ -20,9 +20,9 @@ export const MIN_QUERY_LENGTH = 2;
 
 export interface PlaceResult {
   id: string;
-  /** Short name, for example "Larissa". */
+  /** Short name, for example "Fresno". */
   name: string;
-  /** The remaining part of the address, for example "Thessaly, Greece". */
+  /** The remaining part of the address, for example "Fresno County, California, United States". */
   context: string;
   center: [lon: number, lat: number];
   bbox: BBox | null;
@@ -84,6 +84,8 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("limit", "5");
   url.searchParams.set("accept-language", "en");
+  // The data is for California, so search only in the United States.
+  url.searchParams.set("countrycodes", "us");
 
   const response = await fetch(url, {
     signal,

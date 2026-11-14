@@ -9,7 +9,10 @@
     "start": "pnpm --filter @demetra/web start",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "db:pull": "pnpm --filter @demetra/db db:pull",
+    "db:studio": "pnpm --filter @demetra/db db:studio --port 4984",
+    "db:studio:logs": "docker logs -f demetra-studio"
   },
   "devDependencies": {
     "typescript": "^5"

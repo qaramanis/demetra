@@ -1,19 +1,22 @@
 # Demetra
 
-> **Scope change (2026-11-14).** Demetra now shows real data for the cropland of California:
-> crops, estimated revenue and soil for each block of 990 m. The new scope is in
-> [`docs/scope.md`](docs/scope.md). The text below describes the first phase (mock data for
-> Greece). It will be written again with the new implementation.
+Demetra is a map dashboard for the cropland of California. For each block of 990 m x 990 m
+and for each year, it shows the crops in the block, the estimated revenue of each crop and the
+soil below each crop. It is a NASA Space Apps 2026 project.
 
-Demetra is a map dashboard that shows crop-rotation risk, cost and yield for each
-agricultural block. It is a NASA Space Apps 2026 project. The demo area is the Thessaly plain
-and Central Macedonia, Greece.
-
-This phase is the frontend with generated (mock) data. No real dataset is connected.
+The data is real. It comes from public USDA datasets (Cropland Data Layer, gSSURGO, County
+Agricultural Commissioners' data) and is in a Postgres + PostGIS database. The scope, the
+database tables and the data limits are in [`docs/scope.md`](docs/scope.md).
 
 ## Run locally
 
-You need Node.js 20.9 or later and pnpm 12.
+You need Node.js 20.9 or later, pnpm 12 and the database.
+
+1. Start the database. It is the container `demetra-db` of the data pipeline
+   (`127.0.0.1:5433`). The pipeline is not in this repository.
+2. Copy `apps/web/.env.example` to `apps/web/.env.local` and set the password in
+   `DATABASE_URL`. A Neon connection string works too.
+3. Install and start:
 
 ```bash
 pnpm install
@@ -22,32 +25,47 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-| Command          | Function                                         |
-| ---------------- | ------------------------------------------------ |
-| `pnpm dev`       | Starts the dashboard in development mode.        |
-| `pnpm build`     | Makes the production build of the dashboard.     |
-| `pnpm start`     | Starts the production build.                     |
-| `pnpm lint`      | Runs ESLint.                                     |
-| `pnpm typecheck` | Runs the TypeScript compiler on all packages.    |
-| `pnpm test`      | Runs the Vitest tests (grids and mock provider). |
-
-No API key and no environment variable are necessary.
+| Command          | Function                                                         |
+| ---------------- | ---------------------------------------------------------------- |
+| `pnpm dev`       | Starts the dashboard in development mode.                        |
+| `pnpm build`     | Makes the production build of the dashboard.                     |
+| `pnpm start`     | Starts the production build.                                     |
+| `pnpm lint`      | Runs ESLint.                                                     |
+| `pnpm typecheck` | Runs the TypeScript compiler on all packages.                    |
+| `pnpm test`      | Runs the Vitest tests.                                           |
+| `pnpm db:pull`   | Reads the table structure from the database (`drizzle-kit pull`). |
+| `pnpm db:studio` | Starts Drizzle Studio on the host, on port 4984.                 |
 
 ## What the dashboard does
 
 - **Map.** MapLibre GL JS with two basemaps: OpenFreeMap vector tiles and Esri World Imagery.
-  The first view is Larissa. You can search for a place or go to a demo area.
-- **Blocks.** The land is divided into square cells of a grid. Each block has a colour from
-  the active metric. Move the pointer above a block to see its value. Click a block to select it.
-- **Custom fields.** "Draw a field" lets you draw a polygon. You select a custom field in the
-  same way as a block.
-- **Filters.** The metric on the map, the crop, the growing season (year and months), the
-  water supply (irrigated or rainfed), the grid and the cell size.
-- **Legend.** Class colours for the vegetation health score. A continuous colour ramp with
-  the minimum and the maximum for the other metrics.
-- **Detail panel.** Area in stremmata and hectares (1 stremma = 0.1 ha), centre coordinates,
-  one card for each metric, and three rotation strategies of three years. You can find the
-  best strategy by profit or by yield.
+  The first view is California. You can search for a place or go to an area (Central Valley,
+  Salinas Valley, Imperial Valley).
+- **Blocks.** Each block is a square of 990 m (33 x 33 cells of the Cropland Data Layer). A
+  block exists only where there is cropland. Move the pointer above a block to see its value.
+  Click a block to select it.
+- **Map layers.** The layer gives the blocks their color:
+  - *Main crop*: the crop class with the largest area, in the official color of the Cropland
+    Data Layer.
+  - *Revenue per acre*: the estimated revenue of the crops, in US dollars for each acre.
+  - *Soil quality*: the California Revised Storie index (0 to 100).
+- **Filters.** The year, the crop class and the county. With a crop filter, the values of a
+  block are the values of that crop in the block.
+- **Legend.** The largest crops in the view for the crop layer. A color ramp for the number
+  layers.
+- **Detail panel.** All crops of the selected block with acres, share and revenue, the county
+  data of a crop (commodity, yield, price) and the soil values below that crop.
+
+## Data limits
+
+The dashboard shows these limits in the interface:
+
+- Revenue and yield are county averages. They are not values for a field.
+- Grain revenue (wheat, barley, oats, triticale) is not reliable.
+- Fallow land has no revenue, and some crops have no county revenue data.
+- Crop classes come from satellite images and can be incorrect.
+- Soil maps are correct for areas of 1 to 10 acres, not for one cell.
+- There is no weather, water or cost data. Profit cannot be calculated.
 
 ## Repository
 
@@ -56,83 +74,58 @@ This is a pnpm workspace.
 ```
 apps/web                  The Next.js dashboard
   app/                    Layout, page and global styles
+  app/api/                The GET routes that the browser calls
   components/             Interface components (map, filters, legend, detail panel)
-  config/                 Basemaps, demo areas, palettes, seasons
-  data/provider.ts        The one file that selects the data provider
+  config/                 Basemaps, areas and color ramps
+  data/api.ts             The requests to the GET routes
   data/queries.ts         TanStack Query hooks
   i18n/en.json            All interface text
   store/                  Zustand stores (interface state)
-packages/core             Shared domain code, with no interface code
-  src/config/crops.ts     Static crop parameters
-  src/config/metrics.ts   Metric definitions and ranges
-  src/grid/               The grids
-  src/provider.ts         The FieldDataProvider interface
-packages/providers/mock   The mock data provider
+packages/core             Shared types and constants, with no interface code
+packages/db               Drizzle ORM: the table definitions, the client and the queries
+docs/scope.md             The scope, the database tables and the data limits
 ```
 
-Code that calculates values from real datasets goes into a new package in `packages/`.
+Internal packages export TypeScript source. There is no build step for them.
 
-## Data layer
+## Data flow
 
-The dashboard reads field data only through the `FieldDataProvider` interface in
-`packages/core/src/provider.ts`:
+The browser does not connect to the database. The queries run in server code.
 
-```ts
-interface FieldDataProvider {
-  readonly meta: ProviderMeta;
-  getBlocks(query: BlocksQuery): Promise<BlockFeatureCollection>;
-  getBlockMetrics(block: Block, filters: Filters): Promise<BlockMetrics>;
-  getRotationStrategies(block: Block, filters: Filters): Promise<RotationStrategy[]>;
-}
+```
+component → TanStack Query hook → GET route → query function → Drizzle → Postgres + PostGIS
+            apps/web/data          apps/web/app/api   packages/db/src/queries
 ```
 
-A block is a GeoJSON polygon in WGS84 with an id. This is the same for a grid cell and for a
-custom field, so a provider can use the geometry directly to read a raster or a vector
-dataset.
+| Route                                                           | Answer                                                                  |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `GET /api/reference`                                            | The years, the crop classes and the counties for the filters.          |
+| `GET /api/blocks?bbox=w,s,e,n&year=2017[&crop=75][&county=06019]` | The blocks of a map area as GeoJSON, with one summary for each block.   |
+| `GET /api/blocks/<id>?year=2017`                                | All crops of one block with revenue and soil values.                   |
 
-To add a real provider:
+- The map requests only the blocks of the visible area. One answer has a maximum of
+  100,000 blocks (`MAX_BLOCKS`). California has 86,623 blocks.
+- A block has more than one crop. The summary of a block is calculated from all its crops
+  that agree with the filters. The main crop is only the color of the block in the crop
+  layer.
+- The routes are GET Route Handlers and not Server Functions (`"use server"`): Next.js runs
+  Server Functions one at a time and recommends Route Handlers for data that a client
+  library reads.
 
-1. Make a package in `packages/providers/<name>` that implements `FieldDataProvider`.
-2. Return each metric inside its range in `packages/core/src/config/metrics.ts`.
-3. Change the import in `apps/web/data/provider.ts`.
+## Database and Drizzle
 
-The dashboard needs no other change. The "Mock data" badge on the map goes away when
-`meta.kind` is `live`.
+The data pipeline makes and loads the tables (`blocks`, `block_crops`, `crops`, `counties`
+and the view `block_main_crop`). Drizzle only reads them.
 
-## Grids
-
-| Grid          | Coordinate system    | Area   | Cells agree with the pixels of |
-| ------------- | -------------------- | ------ | ------------------------------ |
-| Global grid   | UTM zones (WGS84)    | World  | Sentinel-2 rasters             |
-| EEA reference | ETRS89-LAEA (3035)   | Europe | Copernicus HRL 10 m rasters    |
-
-Each grid has cells of 1 km, 100 m and 10 m. A larger cell contains 10 × 10 smaller cells.
-A cell id is stable: the same cell has the same id in each request. The EEA grid uses the
-EEA cell codes, for example `1kmE5387N1926` in Larissa.
-
-To add a grid for a different raster dataset, use `createProjectedGrid` in
-`packages/core/src/grid/` with the coordinate system of the raster, a corner of one pixel
-and the cell sizes. Then add the grid to `GRIDS` in `packages/core/src/grid/index.ts`.
-
-## Mock data
-
-`MockFieldDataProvider` generates its values. The same block and the same filters always
-give the same values. A value comes from two parts: a smooth field at the position of the
-block (adjacent blocks are similar) and a small difference from the id of the block.
-
-| Metric                  | Range        | The value changes with                    |
-| ----------------------- | ------------ | ----------------------------------------- |
-| Vegetation health (FHS) | 0 to 100     | crop, water supply, year, months          |
-| Crop water deficit (WD) | 0 to 600 mm  | crop, water supply, year, months          |
-| Erosion risk (ERI)      | 0 to 1       | crop, year                                |
-| Profit margin           | −100 to 100 % | crop, water supply, year, months          |
-| Resilience              | 0 to 100 %   | crop, water supply, year, months          |
-| Confidence              | 0 to 100 %   | months                                    |
-
-FHS classes: A is 75 or more, B is 50 to 74, C is 49 or less.
-
-The model is in `packages/providers/mock/src/model.ts`. It uses the crop parameters in
-`crops.ts`. The other numbers in the model are placeholders, not agronomic results.
+- `packages/db/src/schema.ts` comes from `drizzle-kit pull`. After a change of the tables,
+  run `pnpm db:pull` and copy the changes from `packages/db/pulled/schema.ts`.
+- Do not add `drizzle-kit generate`, `migrate` or `push`: they change the tables.
+- Drizzle can decode only PostGIS points. A query does not select `blocks.geom` directly: it
+  uses `ST_AsGeoJSON(geom)`.
+- Drizzle Studio for the local database is the container `demetra-studio` of the pipeline
+  stack. Open `https://local.drizzle.studio/`.
+- `pnpm db:studio` starts Drizzle Studio on the host with the database of
+  `apps/web/.env.local` (for example Neon). Open `https://local.drizzle.studio/?port=4984`.
 
 ## Map services
 
@@ -143,8 +136,9 @@ The model is in `packages/providers/mock/src/model.ts`. It uses the crop paramet
   request each second and does not permit search while the user types. Thus the search starts
   when the user presses Enter.
 
-## Not in this phase
+## Not in this version
 
-Real data, the calculation engine, machine learning, user accounts, persistence and a Greek
+More years (2018 to 2022 are planned), land use change and crop rotation between years,
+predictions from the model team, the tool that draws custom fields, user accounts and a Greek
 interface. All interface text is in `apps/web/i18n/en.json`, so a second language needs a
 second JSON file and no change in the components.
