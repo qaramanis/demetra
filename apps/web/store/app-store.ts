@@ -41,6 +41,8 @@ interface AppState {
   drawing: boolean;
   /** How the detail panel finds the best rotation strategy. */
   ranking: RankingCriterion;
+  /** On a small screen the filters are hidden until the user opens them. */
+  filtersOpen: boolean;
 
   setMetric: (metric: MetricId) => void;
   setCrop: (crop: CropId) => void;
@@ -54,6 +56,7 @@ interface AppState {
   removeCustomField: (id: string) => void;
   setDrawing: (drawing: boolean) => void;
   setRanking: (ranking: RankingCriterion) => void;
+  setFiltersOpen: (open: boolean) => void;
 }
 
 /** State of the user interface. Field data is not here: TanStack Query keeps it. */
@@ -70,6 +73,7 @@ export const useAppStore = create<AppState>()((set) => ({
   customFields: [],
   drawing: false,
   ranking: "profit",
+  filtersOpen: false,
 
   setMetric: (metric) => set({ metric }),
   setCrop: (crop) => set({ crop }),
@@ -82,7 +86,12 @@ export const useAppStore = create<AppState>()((set) => ({
   setBasemap: (basemap) => set({ basemap, drawing: false }),
   setViewport: (viewport) => set({ viewport }),
   select: (selected) =>
-    set((state) => ({ selected, hasSelected: state.hasSelected || selected !== null })),
+    set((state) => ({
+      selected,
+      hasSelected: state.hasSelected || selected !== null,
+      // On a small screen the detail panel and the filters do not fit together.
+      filtersOpen: selected ? false : state.filtersOpen,
+    })),
   addCustomField: (field) =>
     set((state) => ({
       customFields: [...state.customFields, field],
@@ -96,6 +105,7 @@ export const useAppStore = create<AppState>()((set) => ({
     })),
   setDrawing: (drawing) => set({ drawing }),
   setRanking: (ranking) => set({ ranking }),
+  setFiltersOpen: (filtersOpen) => set({ filtersOpen }),
 }));
 
 /** The filters that change the values of the metrics. */

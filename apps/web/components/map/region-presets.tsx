@@ -23,7 +23,7 @@ export function RegionPresets() {
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="hidden items-center gap-1.5 sm:flex">
       <span className="hidden text-xs text-muted-foreground lg:inline">{t("regions.goTo")}</span>
       {REGION_PRESETS.map((region) => (
         <Button key={region.id} variant="outline" size="sm" onClick={() => goTo(region)}>

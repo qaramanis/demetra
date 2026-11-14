@@ -259,10 +259,16 @@ function BlockCount() {
 /** The left sidebar: the active metric and the filters that change the values. */
 export function FiltersSidebar() {
   const t = useT();
+  const open = useAppStore((state) => state.filtersOpen);
   return (
     <aside
       aria-label={t("filters.title")}
-      className="hidden w-72 shrink-0 flex-col border-r bg-card md:flex"
+      className={cn(
+        "w-72 shrink-0 flex-col border-r bg-card md:flex",
+        // On a small screen the sidebar is above the map, and only when the user opens it.
+        "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:max-w-[85vw] max-md:shadow-xl",
+        open ? "flex" : "hidden",
+      )}
     >
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-6 p-4">

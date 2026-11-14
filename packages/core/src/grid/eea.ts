@@ -7,7 +7,7 @@ import { createProjectedGrid } from "./projected.ts";
  * rasters in this coordinate system, so a cell of this grid contains whole pixels of those
  * rasters: 100 × 100 pixels in a 1 km cell.
  *
- * Cell ids are the EEA cell codes, for example "1kmE5432N1987": the cell size, then the
+ * Cell ids are the EEA cell codes, for example "1kmE5387N1926" in Larissa: the cell size, then the
  * easting and the northing of the south-west corner in units of the cell size.
  *
  * If your raster has a different origin or coordinate system, add a grid for it with

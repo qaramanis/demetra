@@ -5,6 +5,7 @@ import { MapProvider } from "react-map-gl/maplibre";
 
 import { DetailPanel } from "@/components/detail/detail-panel";
 import { FiltersSidebar } from "@/components/filters/filters-sidebar";
+import { FiltersToggle } from "@/components/filters/filters-toggle";
 import { Legend } from "@/components/legend/legend";
 import { BasemapToggle } from "@/components/map/basemap-toggle";
 import { DrawButton } from "@/components/map/draw-button";
@@ -41,6 +42,7 @@ export function AppShell() {
     <MapProvider>
       <div className="flex h-dvh flex-col">
         <TopBar>
+          <FiltersToggle />
           <LocationSearch className="w-full max-w-72" />
           <RegionPresets />
         </TopBar>

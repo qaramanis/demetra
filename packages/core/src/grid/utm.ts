@@ -65,7 +65,7 @@ function zoneCells(
  * the cell size. Sentinel-2 rasters use the same coordinates, so a cell contains whole
  * Sentinel-2 pixels.
  *
- * Cell ids are "<zone><N|S>-<size>E<ix>N<iy>", for example "34N-1kmE621N4389".
+ * Cell ids are "<zone><N|S>-<size>E<ix>N<iy>", for example "34N-1kmE621N4388" in Larissa.
  *
  * At the limit between two zones the cells of the two zones do not fit exactly.
  */

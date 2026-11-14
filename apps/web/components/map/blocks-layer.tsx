@@ -1,7 +1,11 @@
 "use client";
 
 import type { BlockFeatureCollection } from "@demetra/core";
-import type { FillLayerSpecification, LineLayerSpecification } from "maplibre-gl";
+import type {
+  ExpressionSpecification,
+  FillLayerSpecification,
+  LineLayerSpecification,
+} from "maplibre-gl";
 import { useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
 
@@ -12,6 +16,9 @@ export const BLOCKS_SOURCE = "blocks";
 export const BLOCKS_FILL_LAYER = "blocks-fill";
 
 const EMPTY: BlockFeatureCollection = { type: "FeatureCollection", features: [] };
+
+/** `true` for the block under the pointer. */
+const HOVERED: ExpressionSpecification = ["boolean", ["feature-state", "hover"], false];
 
 interface BlocksLayerProps {
   data: BlockFeatureCollection | undefined;
@@ -29,11 +36,16 @@ export function BlocksLayer({ data, beforeId }: BlocksLayerProps) {
     () => ({
       "fill-color": fillColorExpression(metric),
       // Imagery is darker and has more detail than the vector map, so the fill is more opaque.
+      // When the user zooms in, the fill becomes more transparent and the basemap shows the
+      // ground below the blocks.
       "fill-opacity": [
-        "case",
-        ["boolean", ["feature-state", "hover"], false],
-        0.95,
-        onImagery ? 0.82 : 0.74,
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12,
+        ["case", HOVERED, 0.95, onImagery ? 0.82 : 0.74],
+        15,
+        ["case", HOVERED, 0.85, onImagery ? 0.5 : 0.6],
       ],
       // The line layer below draws the edges.
       "fill-antialias": false,
@@ -73,7 +85,7 @@ export function BlocksLayer({ data, beforeId }: BlocksLayerProps) {
         paint={{
           "line-color": "#1d1b18",
           "line-width": 2,
-          "line-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0],
+          "line-opacity": ["case", HOVERED, 1, 0],
         }}
       />
     </Source>
