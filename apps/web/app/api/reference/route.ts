@@ -1,7 +1,7 @@
 import { getReferenceData } from "@demetra/db";
 import { connection } from "next/server";
 
-import { serverError } from "../_lib/request";
+import { cachedJson, serverError } from "../_lib/request";
 
 /**
  * `GET /api/reference`
@@ -15,7 +15,7 @@ export async function GET() {
   await connection();
 
   try {
-    return Response.json(await getReferenceData());
+    return cachedJson(await getReferenceData());
   } catch (error) {
     return serverError("reference", error);
   }

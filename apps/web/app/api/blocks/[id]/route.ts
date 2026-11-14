@@ -1,7 +1,14 @@
 import { getBlockDetail } from "@demetra/db";
 import type { NextRequest } from "next/server";
 
-import { badRequest, notFound, parseBlockId, parseYear, serverError } from "../../_lib/request";
+import {
+  badRequest,
+  cachedJson,
+  notFound,
+  parseBlockId,
+  parseYear,
+  serverError,
+} from "../../_lib/request";
 
 /**
  * `GET /api/blocks/<id>?year=<year>`
@@ -20,7 +27,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/blocks/[
 
   try {
     const detail = await getBlockDetail(id, year);
-    return detail ? Response.json(detail) : notFound(`The block ${id} does not exist.`);
+    return detail ? cachedJson(detail) : notFound(`The block ${id} does not exist.`);
   } catch (error) {
     return serverError("blocks/[id]", error);
   }

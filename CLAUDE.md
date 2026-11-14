@@ -39,6 +39,9 @@ rotation strategies and the tool that draws custom fields. Do not add it again.
 - The browser does not connect to the database. Queries run in server code.
 - Do not read the database in a `useEffect` hook. Use TanStack Query or server components.
 - Request blocks for the visible map area only, with a limit on the number of blocks.
+- The answer of `/api/blocks` has values only. The browser calculates the square of each block
+  from its id (`packages/core/src/block-grid.ts`). Do not add the shapes to the answer: it then
+  exceeds the size limits of the host.
 - A block has more than one crop. Do not show the main crop as the only crop of a block.
 - Show the data limits in the interface (county averages, unreliable grain revenue, no revenue
   for fallow land).

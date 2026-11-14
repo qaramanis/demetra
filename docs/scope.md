@@ -185,7 +185,21 @@ Possible with the 2017 data:
   runs Server Functions one at a time and recommends Route Handlers for requests that read data.
 - The map requests only the blocks in the visible area (`geom && ST_MakeEnvelope(...)`), with a limit
   on the number of blocks (`MAX_BLOCKS`, 100,000). The full state has 86,623 blocks, so the first
-  view shows all of them. This answer has approximately 25 MB and takes less than 1 second.
+  view shows all of them. This answer has 3.1 MB (0.9 MB with gzip) and takes less than 1 second.
+- The answer of `/api/blocks` has one row of values for each block and no shapes. The browser
+  calculates the square of a block from its id (`blockSquare` in `packages/core/src/block-grid.ts`,
+  used by `blockFeatures`). For all the blocks of 2017, the result is equal to
+  `ST_AsGeoJSON(geom, 6)`. With the shapes, the answer for the full state had 24.9 MB. That is more
+  than the limits of Vercel for the answer of a function (4.5 MB) and for the CDN cache (10 MB). Do
+  not add the shapes to the answer. If the pipeline changes the grid, change the constants in
+  `block-grid.ts`.
+- A correct answer of the three routes has the header
+  `Cache-Control: public, max-age=0, s-maxage=3600` (`cachedJson` in `apps/web/app/api/_lib/request.ts`).
+  The CDN of Vercel keeps the answer for 1 hour and answers the subsequent requests for the same
+  address. The function and the database then do no work.
+- After a load of new data into the Neon database, the map can show the old data for a maximum of
+  1 hour. To show the new data immediately, purge the CDN cache in Vercel (CDN → Caches → Purge
+  cache, with the tag `*`) or deploy again: each deployment has its own cache.
 - With a crop or county filter, the values of a block are the values of the crops that agree with
   the filter. The main crop of a block is the crop class with the most cells.
 - Do not read the database in a `useEffect` hook. Use TanStack Query or server components.

@@ -1,5 +1,6 @@
 import type { Feature, FeatureCollection, Polygon } from "geojson";
 
+import { blockSquare } from "./block-grid.ts";
 import type { BBox } from "./types.ts";
 
 /**
@@ -52,10 +53,53 @@ export type BlockFeature = Feature<Polygon, BlockProperties>;
 export type BlockFeatureCollection = FeatureCollection<Polygon, BlockProperties>;
 
 /**
+ * One block in the answer of the server: the values of `BlockProperties` in this order.
+ * `null` = no value.
+ *
+ * A row has no property names and no shape. The answer for the full state is then 3 MB and
+ * not 25 MB, which is necessary for the size limits of the host. `blockRow` makes a row and
+ * `blockFeatures` reads the rows: use only these two functions, so that the order of the
+ * values is in one file.
+ */
+export type BlockRow = [
+  id: string,
+  crop: number,
+  share: number,
+  crops: number,
+  acres: number,
+  revenue: number | null,
+  storie: number | null,
+];
+
+/** The row of a block, for the answer of the server. */
+export function blockRow(properties: BlockProperties): BlockRow {
+  const { id, crop, share, crops, acres, revenue, storie } = properties;
+  return [id, crop, share, crops, acres, revenue ?? null, storie ?? null];
+}
+
+/**
+ * The blocks of an answer as GeoJSON for the map. The shape of each block is calculated from
+ * its id. A row that has no correct block id has no shape and is not in the result.
+ */
+export function blockFeatures(rows: readonly BlockRow[]): BlockFeatureCollection {
+  const features: BlockFeature[] = [];
+  for (const [id, crop, share, crops, acres, revenue, storie] of rows) {
+    const geometry = blockSquare(id);
+    if (!geometry) continue;
+    const properties: BlockProperties = { id, crop, share, crops, acres };
+    // A block without a value does not have the property. The map shows it as "no data".
+    if (revenue !== null) properties.revenue = revenue;
+    if (storie !== null) properties.storie = storie;
+    features.push({ type: "Feature", geometry, properties });
+  }
+  return { type: "FeatureCollection", features };
+}
+
+/**
  * The answer to a request for the blocks of a map area.
- * - `ok`: the blocks.
+ * - `ok`: one row for each block.
  * - `tooMany`: the area contains more than `limit` blocks. The user must zoom in.
  */
 export type BlocksResponse =
-  | { status: "ok"; blocks: BlockFeatureCollection }
+  | { status: "ok"; rows: BlockRow[] }
   | { status: "tooMany"; count: number; limit: number };
