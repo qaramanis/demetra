@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { MapProvider } from "react-map-gl/maplibre";
 
 import { FiltersSidebar } from "@/components/filters/filters-sidebar";
+import { Legend } from "@/components/legend/legend";
 import { BasemapToggle } from "@/components/map/basemap-toggle";
 import { HoverTooltip } from "@/components/map/hover-tooltip";
 import { LocationSearch } from "@/components/map/location-search";
@@ -56,6 +57,9 @@ export function AppShell() {
             </div>
             <div className="absolute top-3 right-3 z-10">
               <BasemapToggle />
+            </div>
+            <div className="absolute bottom-3 left-3 z-10">
+              <Legend />
             </div>
           </main>
         </div>
