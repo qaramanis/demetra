@@ -3,8 +3,24 @@
   "app.description": "Crop rotation risk, cost and yield for each agricultural block.",
   "app.tagline": "Crop rotation risk, cost and yield",
 
+  "map.loading": "The map is loading…",
+
+  "basemap.label": "Basemap",
+  "basemap.vector": "Map",
+  "basemap.satellite": "Satellite",
+
+  "regions.goTo": "Go to",
+  "regions.thessaly": "Thessaly",
+  "regions.centralMacedonia": "Central Macedonia",
+
+  "search.label": "Search for a place",
+  "search.placeholder": "Search for a place, then press Enter",
+  "search.loading": "Searching…",
+  "search.empty": "No place found for “{query}”.",
+  "search.error": "The search is not available now. Try again.",
+  "search.attribution": "Search results © OpenStreetMap contributors",
+
   "filters.title": "Filters",
   "detail.title": "Block details",
-  "legend.title": "Legend",
-  "map.loading": "The map is loading…"
+  "legend.title": "Legend"
 }
