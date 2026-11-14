@@ -1,0 +1,10 @@
+{
+  "app.name": "Field Shift",
+  "app.description": "Crop rotation risk, cost and yield for each agricultural block.",
+  "app.tagline": "Crop rotation risk, cost and yield",
+
+  "filters.title": "Filters",
+  "detail.title": "Block details",
+  "legend.title": "Legend",
+  "map.loading": "The map is loading…"
+}
