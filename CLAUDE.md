@@ -1,4 +1,4 @@
-# demetra (Field Shift)
+# Demetra
 
 pnpm workspace monorepo. A map dashboard for crop-rotation risk, cost and yield, and the
 computing code behind it.

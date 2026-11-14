@@ -4,7 +4,10 @@ import dynamic from "next/dynamic";
 import { MapProvider } from "react-map-gl/maplibre";
 
 import { BasemapToggle } from "@/components/map/basemap-toggle";
+import { HoverTooltip } from "@/components/map/hover-tooltip";
 import { LocationSearch } from "@/components/map/location-search";
+import { MapStatus } from "@/components/map/map-status";
+import { MockDataBadge } from "@/components/map/mock-data-badge";
 import { RegionPresets } from "@/components/map/region-presets";
 import { useT } from "@/i18n";
 
@@ -47,6 +50,15 @@ export function AppShell() {
           </aside>
           <main className="relative min-w-0 flex-1 bg-muted">
             <MapView />
+            <HoverTooltip />
+            <div className="absolute top-3 left-3 z-10">
+              <MockDataBadge />
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-40">
+              <div className="pointer-events-auto">
+                <MapStatus />
+              </div>
+            </div>
             <div className="absolute top-3 right-3 z-10">
               <BasemapToggle />
             </div>

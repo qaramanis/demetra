@@ -20,6 +20,17 @@ export {
   polygonCentroid,
 } from "./geo.ts";
 
+export {
+  DEFAULT_GRID,
+  GRIDS,
+  MAX_LATTICE_CELLS,
+  cellSizeLabel,
+  createProjectedGrid,
+  estimateCellCount,
+  gridCovers,
+  utmZone,
+} from "./grid/index.ts";
+export type { ProjectedGridOptions } from "./grid/index.ts";
 export { GRID_IDS } from "./grid/types.ts";
 export type { GridCell, GridDef, GridId } from "./grid/types.ts";
 

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** The Field Shift mark: one field block that moves to a new position. */
+/** The Demetra mark: one field block that moves to a new position. */
 export function Logo({ className }: { className?: string }) {
   return (
     <svg

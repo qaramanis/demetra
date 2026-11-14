@@ -1,6 +1,6 @@
-# Field Shift
+# Demetra
 
-Field Shift is a map dashboard that shows crop-rotation risk, cost and yield for each
+Demetra is a map dashboard that shows crop-rotation risk, cost and yield for each
 agricultural block. It is a NASA Space Apps 2026 project. The demo area is the Thessaly plain
 and Central Macedonia, Greece.
 

@@ -1,7 +1,20 @@
-import type { BBox } from "@demetra/core";
+import { DEFAULT_GRID } from "@demetra/core";
+import type {
+  BBox,
+  Block,
+  CropId,
+  Filters,
+  GridRef,
+  Irrigation,
+  MetricId,
+  Period,
+  RankingCriterion,
+} from "@demetra/core";
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 
 import type { BasemapId } from "@/config/basemaps";
+import { DEFAULT_PERIOD } from "@/config/period";
 
 /** The part of the world that the map shows. */
 export interface Viewport {
@@ -10,18 +23,79 @@ export interface Viewport {
 }
 
 interface AppState {
+  /** The metric that gives the blocks their colour. */
+  metric: MetricId;
+  crop: CropId;
+  period: Period;
+  irrigation: Irrigation;
+  grid: GridRef;
   basemap: BasemapId;
   viewport: Viewport | null;
+  /** The block in the detail panel. */
+  selected: Block | null;
+  /** Field polygons that the user made. */
+  customFields: Block[];
+  /** `true` while the user draws a field polygon. */
+  drawing: boolean;
+  /** How the detail panel finds the best rotation strategy. */
+  ranking: RankingCriterion;
 
+  setMetric: (metric: MetricId) => void;
+  setCrop: (crop: CropId) => void;
+  setPeriod: (period: Period) => void;
+  setIrrigation: (irrigation: Irrigation) => void;
+  setGrid: (grid: GridRef) => void;
   setBasemap: (basemap: BasemapId) => void;
   setViewport: (viewport: Viewport) => void;
+  select: (block: Block | null) => void;
+  addCustomField: (field: Block) => void;
+  removeCustomField: (id: string) => void;
+  setDrawing: (drawing: boolean) => void;
+  setRanking: (ranking: RankingCriterion) => void;
 }
 
 /** State of the user interface. Field data is not here: TanStack Query keeps it. */
 export const useAppStore = create<AppState>()((set) => ({
+  metric: "fhs",
+  crop: "cotton",
+  period: DEFAULT_PERIOD,
+  irrigation: "irrigated",
+  grid: DEFAULT_GRID,
   basemap: "vector",
   viewport: null,
+  selected: null,
+  customFields: [],
+  drawing: false,
+  ranking: "profit",
 
+  setMetric: (metric) => set({ metric }),
+  setCrop: (crop) => set({ crop }),
+  setPeriod: (period) => set({ period }),
+  setIrrigation: (irrigation) => set({ irrigation }),
+  // The cells of a different grid are different blocks, so the selection of a cell ends.
+  setGrid: (grid) =>
+    set((state) => ({ grid, selected: state.selected?.kind === "cell" ? null : state.selected })),
   setBasemap: (basemap) => set({ basemap }),
   setViewport: (viewport) => set({ viewport }),
+  select: (selected) => set({ selected }),
+  addCustomField: (field) =>
+    set((state) => ({ customFields: [...state.customFields, field], selected: field })),
+  removeCustomField: (id) =>
+    set((state) => ({
+      customFields: state.customFields.filter((field) => field.id !== id),
+      selected: state.selected?.id === id ? null : state.selected,
+    })),
+  setDrawing: (drawing) => set({ drawing }),
+  setRanking: (ranking) => set({ ranking }),
 }));
+
+/** The filters that change the values of the metrics. */
+export function useFilters(): Filters {
+  return useAppStore(
+    useShallow((state) => ({
+      crop: state.crop,
+      period: state.period,
+      irrigation: state.irrigation,
+    })),
+  );
+}
