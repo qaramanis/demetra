@@ -1,0 +1,27 @@
+{
+  "name": "@demetra/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:pull": "drizzle-kit pull",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@demetra/core": "workspace:*",
+    "@types/geojson": "^7946.0.16",
+    "drizzle-orm": "^0.45.4",
+    "postgres": "^3.4.9",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "^5"
+  }
+}

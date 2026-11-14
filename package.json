@@ -2,23 +2,19 @@
   "name": "demetra",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.4.6",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "dev": "pnpm --filter @demetra/web dev",
+    "build": "pnpm --filter @demetra/web build",
+    "start": "pnpm --filter @demetra/web start",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:pull": "pnpm --filter @demetra/db db:pull",
+    "db:studio": "pnpm --filter @demetra/db db:studio --port 4984",
+    "db:studio:logs": "docker logs -f demetra-studio"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.4.6",
     "typescript": "^5"
   },
   "packageManager": "pnpm@12.8.1"

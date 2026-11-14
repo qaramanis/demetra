@@ -1,0 +1,73 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+  --font-heading: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * The interface is neutral, with a small warm tint. Colour is for the data on the map.
+ */
+:root {
+  --background: oklch(0.985 0.002 90);
+  --foreground: oklch(0.21 0.006 75);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.006 75);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.006 75);
+  --primary: oklch(0.24 0.006 75);
+  --primary-foreground: oklch(0.985 0.002 90);
+  --secondary: oklch(0.965 0.004 90);
+  --secondary-foreground: oklch(0.24 0.006 75);
+  --muted: oklch(0.965 0.004 90);
+  --muted-foreground: oklch(0.5 0.008 75);
+  --accent: oklch(0.955 0.005 90);
+  --accent-foreground: oklch(0.24 0.006 75);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.915 0.005 90);
+  --input: oklch(0.895 0.005 90);
+  --ring: oklch(0.68 0.01 80);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
