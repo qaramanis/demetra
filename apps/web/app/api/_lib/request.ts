@@ -48,6 +48,28 @@ export function parseBBox(text: string | null): BBox | null {
   return [west, south, east, north];
 }
 
+/**
+ * The time that the CDN of the host keeps an answer, in seconds. The data changes only when
+ * the data pipeline loads a year, so after a load the map can show the old data for this
+ * time. A purge of the CDN cache, or a new deployment, shows the new data immediately.
+ */
+const CDN_CACHE_SECONDS = 60 * 60;
+
+/**
+ * An answer with data that is the same for all users.
+ *
+ * `s-maxage` is for the CDN: it answers the subsequent requests for the same address, and
+ * the handler and the database do no work. `max-age=0` is for the browser: it must not keep
+ * a copy, because a purge of the CDN cache cannot remove that copy.
+ *
+ * Do not use this for an answer with an error: only correct data must stay in the cache.
+ */
+export function cachedJson(data: unknown): Response {
+  return Response.json(data, {
+    headers: { "Cache-Control": `public, max-age=0, s-maxage=${CDN_CACHE_SECONDS}` },
+  });
+}
+
 /** The answer to a request that has an incorrect parameter. */
 export function badRequest(error: string): Response {
   return Response.json({ error }, { status: 400 });

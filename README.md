@@ -100,11 +100,16 @@ component → TanStack Query hook → GET route → query function → Drizzle �
 | Route                                                           | Answer                                                                  |
 | --------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `GET /api/reference`                                            | The years, the crop classes and the counties for the filters.          |
-| `GET /api/blocks?bbox=w,s,e,n&year=2017[&crop=75][&county=06019]` | The blocks of a map area as GeoJSON, with one summary for each block.   |
+| `GET /api/blocks?bbox=w,s,e,n&year=2017[&crop=75][&county=06019]` | The blocks of a map area: one row of values for each block, no shapes.  |
 | `GET /api/blocks/<id>?year=2017`                                | All crops of one block with revenue and soil values.                   |
 
 - The map requests only the blocks of the visible area. One answer has a maximum of
   100,000 blocks (`MAX_BLOCKS`). California has 86,623 blocks.
+- The answer of `/api/blocks` has no shapes. A block is a square on a fixed grid, so the
+  browser calculates the square from the block id (`blockFeatures` and `blockSquare` in
+  `packages/core`). The answer for the full state is then 3.1 MB and not 24.9 MB.
+- The CDN of the host keeps a correct answer of the routes for 1 hour (`Cache-Control` with
+  `s-maxage`). After a load of new data, purge the CDN cache or deploy again.
 - A block has more than one crop. The summary of a block is calculated from all its crops
   that agree with the filters. The main crop is only the color of the block in the crop
   layer.

@@ -1,9 +1,12 @@
-export { MAX_BLOCKS } from "./blocks.ts";
+export { blockSquare } from "./block-grid.ts";
+
+export { MAX_BLOCKS, blockFeatures, blockRow } from "./blocks.ts";
 export type {
   BlockFeature,
   BlockFeatureCollection,
   BlockFilters,
   BlockProperties,
+  BlockRow,
   BlocksQuery,
   BlocksResponse,
 } from "./blocks.ts";

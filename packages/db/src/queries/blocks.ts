@@ -1,7 +1,6 @@
-import { MAX_BLOCKS } from "@demetra/core";
-import type { BlockFeature, BlockProperties, BlocksQuery, BlocksResponse } from "@demetra/core";
+import { MAX_BLOCKS, blockRow } from "@demetra/core";
+import type { BlockProperties, BlockRow, BlocksQuery, BlocksResponse } from "@demetra/core";
 import { and, eq, sql } from "drizzle-orm";
-import type { Polygon } from "geojson";
 
 import { db } from "../client.ts";
 import { blockCrops, blocks } from "../schema.ts";
@@ -12,6 +11,10 @@ import { blockCrops, blocks } from "../schema.ts";
  * A block has one row for each county and crop class. The query adds the rows of each crop
  * class first, because a block on a county border has the same crop in two counties. Then it
  * makes one row for each block.
+ *
+ * The answer has no shapes. The id of a block gives its square, and the browser calculates
+ * it (`blockSquare` in `@demetra/core`). With the shapes, the answer for the full state is
+ * too large for the host.
  */
 export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
   const [west, south, east, north] = query.bbox;
@@ -26,7 +29,7 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
     .where(inArea);
   const count = total?.count ?? 0;
   if (count > MAX_BLOCKS) return { status: "tooMany", count, limit: MAX_BLOCKS };
-  if (count === 0) return { status: "ok", blocks: { type: "FeatureCollection", features: [] } };
+  if (count === 0) return { status: "ok", rows: [] };
 
   // The "C" collation compares bytes. The sort of the block ids is then much faster than
   // with the collation of the database, and the order of the groups is not important.
@@ -78,7 +81,7 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
   ])`;
 
   // Level 2: one row for each block. The casts give JavaScript numbers, not text.
-  const valuesRequest = db
+  const values = await db
     .select({
       id: perCrop.blockId,
       crop: sql<number>`(-(${mainCrop})[2])::int`,
@@ -96,22 +99,8 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
     .from(perCrop)
     .groupBy(perCrop.blockId);
 
-  // The shapes are a second request that runs at the same time. A join of the shapes to the
-  // values in one request is slower.
-  const shapesRequest = db
-    .select({ id: blocks.blockId, geometry: sql<string>`ST_AsGeoJSON(${blocks.geom}, 6)` })
-    .from(blocks)
-    .where(inArea);
-
-  const [values, shapes] = await Promise.all([valuesRequest, shapesRequest]);
-
-  const shapeOf = new Map<string, string>();
-  for (const shape of shapes) shapeOf.set(shape.id, shape.geometry);
-
-  const features: BlockFeature[] = [];
+  const rows: BlockRow[] = [];
   for (const row of values) {
-    const shape = shapeOf.get(row.id);
-    if (shape === undefined) continue;
     const properties: BlockProperties = {
       id: row.id,
       crop: row.crop,
@@ -122,8 +111,8 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
     // A block without a value does not have the property. The map shows it as "no data".
     if (row.revenue !== null) properties.revenue = row.revenue;
     if (row.storie !== null) properties.storie = row.storie;
-    features.push({ type: "Feature", geometry: JSON.parse(shape) as Polygon, properties });
+    rows.push(blockRow(properties));
   }
 
-  return { status: "ok", blocks: { type: "FeatureCollection", features } };
+  return { status: "ok", rows };
 }

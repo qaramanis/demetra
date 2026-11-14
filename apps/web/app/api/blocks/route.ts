@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import {
   badRequest,
+  cachedJson,
   parseBBox,
   parseCountyFips,
   parseCropCode,
@@ -14,8 +15,9 @@ import {
  * `GET /api/blocks?bbox=<west>,<south>,<east>,<north>&year=<year>[&crop=<code>][&county=<fips>]`
  *
  * The blocks of a map area, with the values of the crops that agree with the filters. The
- * answer is a `BlocksResponse` object: the blocks as GeoJSON, or `tooMany` when the area
- * contains more blocks than the limit.
+ * answer is a `BlocksResponse` object: one row of values for each block, or `tooMany` when
+ * the area contains more blocks than the limit. The rows have no shapes: `blockFeatures` of
+ * `@demetra/core` makes the GeoJSON from them.
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    return Response.json(await getBlocks({ bbox, filters: { year, cropCode, countyFips } }));
+    return cachedJson(await getBlocks({ bbox, filters: { year, cropCode, countyFips } }));
   } catch (error) {
     return serverError("blocks", error);
   }
