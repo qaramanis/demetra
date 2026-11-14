@@ -56,3 +56,19 @@ export function formatCellSize(cellSize: number): string {
     ? `${cellSize / 1000}${NBSP}km`
     : `${cellSize}${NBSP}m`;
 }
+
+/** An amount in euros without decimals, for example "€491" or "−€519". */
+export function formatEuros(value: number): string {
+  const rounded = Math.round(value);
+  return `${rounded < 0 ? MINUS : ""}€${formatNumber(Math.abs(rounded))}`;
+}
+
+const areaFormatter = new Intl.NumberFormat("en-GB", { maximumSignificantDigits: 3 });
+
+/**
+ * An area with three significant digits: "1,000", "47.3", "0.1". The area of a block is an
+ * estimate, so more digits would give a wrong idea of its accuracy.
+ */
+export function formatArea(value: number): string {
+  return areaFormatter.format(value);
+}

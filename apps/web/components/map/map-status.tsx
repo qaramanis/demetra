@@ -1,7 +1,7 @@
 "use client";
 
 import { DEFAULT_GRID } from "@demetra/core";
-import { LoaderCircle, TriangleAlert, ZoomIn } from "lucide-react";
+import { LoaderCircle, MousePointerClick, TriangleAlert, ZoomIn } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ export function MapStatus() {
   const t = useT();
   const blocks = useBlocks();
   const setGrid = useAppStore((state) => state.setGrid);
+  const hasSelected = useAppStore((state) => state.hasSelected);
+  const drawing = useAppStore((state) => state.drawing);
 
   if (blocks.status === "tooMany") {
     return (
@@ -61,6 +63,16 @@ export function MapStatus() {
       <Pill>
         <LoaderCircle className="animate-spin" />
         {t("map.blocksLoading")}
+      </Pill>
+    );
+  }
+
+  // Tell a new user what to do, until the first selection.
+  if (blocks.data && !hasSelected && !drawing) {
+    return (
+      <Pill>
+        <MousePointerClick />
+        {t("map.selectHint")}
       </Pill>
     );
   }

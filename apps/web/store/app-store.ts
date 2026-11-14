@@ -33,6 +33,8 @@ interface AppState {
   viewport: Viewport | null;
   /** The block in the detail panel. */
   selected: Block | null;
+  /** `true` after the first selection. The map then stops showing the selection hint. */
+  hasSelected: boolean;
   /** Field polygons that the user made. */
   customFields: Block[];
   /** `true` while the user draws a field polygon. */
@@ -64,6 +66,7 @@ export const useAppStore = create<AppState>()((set) => ({
   basemap: "vector",
   viewport: null,
   selected: null,
+  hasSelected: false,
   customFields: [],
   drawing: false,
   ranking: "profit",
@@ -77,9 +80,14 @@ export const useAppStore = create<AppState>()((set) => ({
     set((state) => ({ grid, selected: state.selected?.kind === "cell" ? null : state.selected })),
   setBasemap: (basemap) => set({ basemap }),
   setViewport: (viewport) => set({ viewport }),
-  select: (selected) => set({ selected }),
+  select: (selected) =>
+    set((state) => ({ selected, hasSelected: state.hasSelected || selected !== null })),
   addCustomField: (field) =>
-    set((state) => ({ customFields: [...state.customFields, field], selected: field })),
+    set((state) => ({
+      customFields: [...state.customFields, field],
+      selected: field,
+      hasSelected: true,
+    })),
   removeCustomField: (id) =>
     set((state) => ({
       customFields: state.customFields.filter((field) => field.id !== id),

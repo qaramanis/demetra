@@ -78,6 +78,9 @@ export function useBlocks() {
   };
 }
 
+/** Position of the block id in the query keys below. */
+const BLOCK_ID_INDEX = 2;
+
 /** The metrics of one block. */
 export function useBlockMetrics(block: Block | null) {
   const filters = useFilters();
@@ -88,6 +91,10 @@ export function useBlockMetrics(block: Block | null) {
       return provider.getBlockMetrics(block, filters, { signal });
     },
     enabled: block !== null,
+    // Keep the old values on the screen while new values load, but only for the same block.
+    // The values of a different block must not appear below the name of the selected block.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[BLOCK_ID_INDEX] === block?.id ? previous : undefined,
   });
 }
 
@@ -101,5 +108,7 @@ export function useRotationStrategies(block: Block | null) {
       return provider.getRotationStrategies(block, filters, { signal });
     },
     enabled: block !== null,
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[BLOCK_ID_INDEX] === block?.id ? previous : undefined,
   });
 }

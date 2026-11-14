@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { MapProvider } from "react-map-gl/maplibre";
 
+import { DetailPanel } from "@/components/detail/detail-panel";
 import { FiltersSidebar } from "@/components/filters/filters-sidebar";
 import { Legend } from "@/components/legend/legend";
 import { BasemapToggle } from "@/components/map/basemap-toggle";
@@ -42,7 +43,7 @@ export function AppShell() {
           <LocationSearch className="w-full max-w-72" />
           <RegionPresets />
         </TopBar>
-        <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-h-0 flex-1">
           <FiltersSidebar />
           <main className="relative min-w-0 flex-1 bg-muted">
             <MapView />
@@ -62,6 +63,7 @@ export function AppShell() {
               <Legend />
             </div>
           </main>
+          <DetailPanel />
         </div>
       </div>
     </MapProvider>
