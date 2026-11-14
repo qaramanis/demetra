@@ -49,3 +49,10 @@ export function formatCoordinates(lon: number, lat: number): string {
     `${Math.abs(value).toFixed(4)}°${NBSP}${value >= 0 ? positive : negative}`;
   return `${part(lat, "N", "S")}, ${part(lon, "E", "W")}`;
 }
+
+/** The size of a grid cell: "1 km", "100 m" or "10 m". */
+export function formatCellSize(cellSize: number): string {
+  return cellSize >= 1000 && cellSize % 1000 === 0
+    ? `${cellSize / 1000}${NBSP}km`
+    : `${cellSize}${NBSP}m`;
+}

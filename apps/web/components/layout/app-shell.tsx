@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { MapProvider } from "react-map-gl/maplibre";
 
+import { FiltersSidebar } from "@/components/filters/filters-sidebar";
 import { BasemapToggle } from "@/components/map/basemap-toggle";
 import { HoverTooltip } from "@/components/map/hover-tooltip";
 import { LocationSearch } from "@/components/map/location-search";
@@ -33,7 +34,6 @@ const MapView = dynamic(() => import("@/components/map/map-view"), {
  * detail panel on the right.
  */
 export function AppShell() {
-  const t = useT();
   return (
     <MapProvider>
       <div className="flex h-dvh flex-col">
@@ -42,12 +42,7 @@ export function AppShell() {
           <RegionPresets />
         </TopBar>
         <div className="flex min-h-0 flex-1">
-          <aside
-            aria-label={t("filters.title")}
-            className="hidden w-72 shrink-0 flex-col border-r bg-card md:flex"
-          >
-            <h2 className="px-4 pt-4 text-sm font-semibold">{t("filters.title")}</h2>
-          </aside>
+          <FiltersSidebar />
           <main className="relative min-w-0 flex-1 bg-muted">
             <MapView />
             <HoverTooltip />
