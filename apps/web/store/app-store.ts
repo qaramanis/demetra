@@ -78,7 +78,8 @@ export const useAppStore = create<AppState>()((set) => ({
   // The cells of a different grid are different blocks, so the selection of a cell ends.
   setGrid: (grid) =>
     set((state) => ({ grid, selected: state.selected?.kind === "cell" ? null : state.selected })),
-  setBasemap: (basemap) => set({ basemap }),
+  // A new basemap style removes the layers of the drawing tool, so the drawing ends.
+  setBasemap: (basemap) => set({ basemap, drawing: false }),
   setViewport: (viewport) => set({ viewport }),
   select: (selected) =>
     set((state) => ({ selected, hasSelected: state.hasSelected || selected !== null })),

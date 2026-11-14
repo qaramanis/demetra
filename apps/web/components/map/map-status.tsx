@@ -1,7 +1,7 @@
 "use client";
 
 import { DEFAULT_GRID } from "@demetra/core";
-import { LoaderCircle, MousePointerClick, TriangleAlert, ZoomIn } from "lucide-react";
+import { LoaderCircle, MousePointerClick, PenTool, TriangleAlert, ZoomIn } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ function Pill({ children }: { children: ReactNode }) {
   return (
     <div
       role="status"
-      className="flex items-center gap-2 rounded-full border bg-card py-1.5 pr-3.5 pl-3 text-xs font-medium shadow-sm [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+      className="pointer-events-auto flex min-h-8 max-w-full items-center gap-2 rounded-2xl border bg-card py-1.5 pr-3.5 pl-3 text-xs font-medium shadow-sm [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
     >
       {children}
     </div>
@@ -27,6 +27,15 @@ export function MapStatus() {
   const setGrid = useAppStore((state) => state.setGrid);
   const hasSelected = useAppStore((state) => state.hasSelected);
   const drawing = useAppStore((state) => state.drawing);
+
+  if (drawing) {
+    return (
+      <Pill>
+        <PenTool />
+        {t("draw.hint")}
+      </Pill>
+    );
+  }
 
   if (blocks.status === "tooMany") {
     return (
@@ -68,7 +77,7 @@ export function MapStatus() {
   }
 
   // Tell a new user what to do, until the first selection.
-  if (blocks.data && !hasSelected && !drawing) {
+  if (blocks.data && !hasSelected) {
     return (
       <Pill>
         <MousePointerClick />

@@ -102,5 +102,8 @@
   "ranking.yield": "Yield",
   "ranking.profit.note": "Profit uses the crop prices. Prices change from year to year.",
   "ranking.yield.note": "Yield is the quantity of the harvest. It does not depend on prices.",
-  "map.selectHint": "Select a block to see its details."
+  "map.selectHint": "Select a block to see its details.",
+  "draw.start": "Draw a field",
+  "draw.cancel": "Cancel",
+  "draw.hint": "Click on the map to add corners. To finish, click the first corner or press Enter."
 }
