@@ -13,11 +13,24 @@ export {
 } from "./schema.ts";
 
 export {
+  getBlockCropHistory,
   getBlockDetail,
   getBlockPrediction,
   getBlocks,
   getClimateCells,
+  getCropStats,
+  getCropTransitions,
   getPredictedBlocks,
   getPredictionYears,
   getReferenceData,
+} from "./queries/index.ts";
+export type {
+  BlockCropHistory,
+  BlockCropShare,
+  BlockCropYear,
+  CropCountyValues,
+  CropStats,
+  CropTransitions,
+  CropYearAcres,
+  NextCrop,
 } from "./queries/index.ts";

@@ -15,9 +15,12 @@ rotation strategies and the tool that draws custom fields. Do not add it again.
 
 - `apps/web` — the Next.js dashboard. Its own `AGENTS.md` applies there, not here.
   - `app/api/` — the GET Route Handlers that the browser calls: `reference`, `blocks`,
-    `blocks/[id]`, `climate`, `predictions` and `predictions/[id]`.
+    `blocks/[id]`, `climate`, `predictions` and `predictions/[id]`. `POST /api/chat` is the
+    route of the assistant (code in `app/api/_lib/chat/`).
   - `data/api.ts` and `data/queries.ts` — the requests to these routes and the TanStack Query
     hooks.
+  - `components/chat/`, `store/chat-store.ts` and `data/chat.ts` — the chat assistant. See
+    "Assistant" in `docs/scope.md`.
 - `packages/core` — shared types and constants: the contract between the server code and the
   interface.
 - `packages/db` — Drizzle ORM: the schema, the client and the query functions
@@ -48,7 +51,10 @@ rotation strategies and the tool that draws custom fields. Do not add it again.
   for fallow land, climate values that are estimates for cells of 10 km).
 - The answer of `/api/blocks` has no climate values. The browser gets the climate cells of the
   year from `/api/climate` and finds the cell of each block (`packages/core/src/climate.ts`).
-- Do not commit the database password. Use an environment file that is not committed.
+- Do not commit the database password or the API key. Use an environment file that is not
+  committed, and do not print the content of an environment file.
+- The assistant has one model, the constant `CHAT_MODEL`. Do not add a model selector. The
+  server keeps no chat, and the browser sends no interface text to the model as instructions.
 - Internal packages export TypeScript source (`"exports": "./src/index.ts"`). There is no
   build step for them.
 - All interface text is in `apps/web/i18n/en.json`.
