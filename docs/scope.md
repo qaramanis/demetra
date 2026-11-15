@@ -351,6 +351,64 @@ the application only reads it.
   converted file (status, crops and scores), and the answer of `/api/predictions` for the full
   state is equal to the answer of the earlier file version.
 
+### Assistant (2026-11-15)
+
+A chat button in the bottom right corner of the map opens a small chat window. The assistant
+answers questions about the blocks, the crop types, the crop rotation, the soil, the climate and
+the weather forecast. It is a Claude model that reads the data with tools. It declines other
+subjects.
+
+- **Interface:** `apps/web/components/chat/`. The button expands into the window. On a wide
+  screen, the button follows the left edge of the detail panel. The map controls (scale, zoom,
+  attribution) are above the button and move up when the window opens. The start view has four
+  suggestions; they use the selected block, or the example block `144_1075` (Colusa County).
+  A line below the text field gives the data limits.
+- **Session:** the browser keeps the chat in `sessionStorage` (`apps/web/store/chat-store.ts`).
+  The chat stays after a page refresh and goes away when the tab closes. "New chat" deletes it.
+  The server keeps no chat. There are no accounts and no history list.
+- **Contract:** `packages/core/src/chat.ts`. The browser sends the text of the newest turns
+  (a maximum of 20; a user message has a maximum of 1,000 characters) and the state of the
+  dashboard (year, selected block, crop filter, county filter). The answer is a stream of
+  events (`step`, `text`, `done`, `error`). The server sends codes and ids only: the interface
+  text is in `en.json`.
+- **Route:** `POST /api/chat` (`apps/web/app/api/chat/route.ts`, code in
+  `apps/web/app/api/_lib/chat/`). It is the only route that is not a GET route, and its answer
+  is not in the CDN cache (`Cache-Control: no-store`).
+- **Model:** `claude-haiku-5-5`, the constant `CHAT_MODEL` in `_lib/chat/limits.ts`. There is one
+  model and no model selector. The settings keep the cost low: low effort, a maximum of 4,000
+  output tokens for each model call, a maximum of 6 rounds of tool calls, 55 seconds for one
+  answer. The server writes one log line for each answer with the token counts. One question
+  costs approximately 0.05 to 0.2 US cents (measured on 2026-11-15: one to three model calls,
+  with the prompt cache). On the same day, three questions gave the same values on Claude
+  Haiku 5.5 and on Claude Sonnet 5.5, which has 20 times the price, so Haiku is the model.
+- **Tools** (`_lib/chat/tools.ts`). The results are small JSON objects with no shapes.
+
+  | Tool | Data |
+  |---|---|
+  | `get_block` | `getBlockDetail`: the crops, the county revenue, the soil and the climate of one block in one year |
+  | `get_block_history` | `getBlockCropHistory`: the crops of one block in each year. `getBlockPrediction`: the model prediction |
+  | `get_rotation_stats` | `getCropTransitions`: the main crops of the next year in the blocks that have a given main crop |
+  | `get_crop_stats` | `getCropStats`: the area, the county values and the area of each year for one crop |
+  | `get_weather` | The forecast of Open-Meteo for 7 days at a block or at a point in or near California |
+
+- **Queries:** `packages/db/src/queries/assistant.ts`. `getCropTransitions` uses only the blocks
+  with 40 acres of cropland or more in the first year: smaller blocks are 53% of the block-years
+  but have 3% of the cropland, and their main crop is not stable. This query takes 0.1 to 0.3
+  seconds (0.8 seconds with a cold database cache), so its results stay in the memory of the
+  server. After the pipeline loads a year, the results are old until the server starts again.
+- **System prompt:** `_lib/chat/prompt.ts`. The stable part has the role, the block model, the
+  limits of "Limits that the dashboard must show", and the lists of years, crops and counties.
+  The state of the dashboard comes after it.
+- **Weather:** Open-Meteo is the only external source. The request has only the coordinates,
+  rounded to 0.01 degrees. Terms (read on 2026-11-15): the free service is for non-commercial
+  use, and each place that shows the data must have a link to open-meteo.com. The chat shows
+  "Weather data by Open-Meteo.com" below an answer that uses the forecast. There is no web search.
+- **Protection:** the route has no authentication. The limits are: 8 requests in a minute and 60
+  in an hour for each address (in memory, so not exact on a serverless host), a body of 512 kB,
+  the limits of the contract, and the limits of the model call. `ANTHROPIC_API_KEY` is in
+  `apps/web/.env.local` and in the Vercel project. It is not in the browser code. Set a spend
+  limit for the key in the Claude Console.
+
 ### Suggestions for more layers (not decided)
 
 Possible with the 2017 data:
@@ -376,6 +434,8 @@ Possible with the 2017 data:
 - The browser reads the data through six GET Route Handlers (`/api/reference`, `/api/blocks`,
   `/api/blocks/<id>`, `/api/climate`, `/api/predictions`, `/api/predictions/<id>`) with TanStack Query. They are not Server Functions (`"use server"`): Next.js
   runs Server Functions one at a time and recommends Route Handlers for requests that read data.
+- The assistant has one more Route Handler, `POST /api/chat`. An event handler of the chat sends
+  the request and reads the answer stream; it is not a TanStack Query hook. See "Assistant".
 - The map requests only the blocks in the visible area (`geom && ST_MakeEnvelope(...)`), with a limit
   on the number of blocks (`MAX_BLOCKS`, 120,000). The full state has 86,623 blocks in 2017, so the
   first view shows all of them. This answer has 3.1 MB (0.9 MB with gzip) and takes less than 1 second.

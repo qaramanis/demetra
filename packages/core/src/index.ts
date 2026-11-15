@@ -60,3 +60,24 @@ export { FALLOW_CROP_CODE, UNRELIABLE_REVENUE_CROP_CODES } from "./reference.ts"
 export type { County, Crop, ReferenceData } from "./reference.ts";
 
 export type { BBox, Block } from "./types.ts";
+
+export {
+  CHAT_MAX_ASSISTANT_CHARS,
+  CHAT_MAX_TURNS,
+  CHAT_MAX_USER_CHARS,
+  CHAT_STREAM_CONTENT_TYPE,
+  CHAT_TOOLS,
+  encodeChatEvent,
+  parseChatEvents,
+} from "./chat.ts";
+export type {
+  ChatContext,
+  ChatErrorCode,
+  ChatErrorResponse,
+  ChatRequest,
+  ChatRole,
+  ChatStep,
+  ChatStreamEvent,
+  ChatTool,
+  ChatTurn,
+} from "./chat.ts";

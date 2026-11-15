@@ -248,6 +248,10 @@ function usePanelPresence(selected: Block | null) {
  * size once, below the panel. (A change of width on each frame makes the map draw again
  * and request new blocks on each frame.) On a narrow screen the panel is always above the
  * map. With reduced motion, the panel only fades.
+ *
+ * The status message of the map follows the left edge of the panel (`StatusArea` in
+ * `app-shell.tsx`). It uses the width of the panel and the times and the curve of the slide:
+ * change them there also.
  */
 export function DetailPanel() {
   const t = useT();

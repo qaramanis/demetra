@@ -231,3 +231,81 @@
 .maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact {
   background-color: color-mix(in oklch, var(--card) 85%, transparent);
 }
+
+/*
+ * The chat (`components/chat`) is in the bottom right corner of the map area (`app-shell.tsx`,
+ * the element with `data-chat`). The variables give its sizes and its times:
+ * - The chat button has the margin of the MapLibre controls, so their right edges align.
+ * - The window is 24rem wide, or less on a narrow screen. It stays in the map area: from `md`
+ *   the filters (18rem) are at its left, and from `lg` the detail panel (26rem, `data-shifted`)
+ *   is at its right.
+ * - The window has a fixed height: 34rem, or less in a short browser window. The MapLibre
+ *   controls (151 px with their margins) then have room above it. With a fixed height, the
+ *   controls do not move while an answer comes.
+ * - The window grows from the shape of the button to a clip that is larger than the window,
+ *   so the clip does not cut the shadow. The radius of the large clip follows the corners of
+ *   the window (`rounded-xl`).
+ */
+[data-chat] {
+  --chat-inset: 10px;
+  --chat-button-size: 2.75rem;
+  /* The map area: the height of the page less the top bar (`h-14`). */
+  --chat-area-height: calc(100dvh - 3.5rem);
+  --chat-controls-height: 9.5rem;
+  --chat-window-width: min(24rem, 100vw - 2 * var(--chat-inset));
+  --chat-window-height: clamp(
+    14rem,
+    var(--chat-area-height) - var(--chat-controls-height) - 2 * var(--chat-inset),
+    34rem
+  );
+  --chat-open-duration: 250ms;
+  --chat-close-duration: 200ms;
+  --chat-clip-button: inset(
+    calc(100% - var(--chat-button-size)) 0 0 calc(100% - var(--chat-button-size)) round
+      calc(var(--chat-button-size) / 2)
+  );
+  --chat-clip-open: inset(-2rem round calc(var(--radius) * 1.4 + 2rem));
+  /* The status message moves left of the open window: half of this distance, with the same
+     padding on its two sides (`StatusArea` in `app-shell.tsx`). */
+  --chat-status-shift: calc((var(--chat-window-width) + var(--chat-inset)) / 2);
+  /* The MapLibre controls are above the chat button, or above the open window. */
+  --map-controls-lift: calc(var(--chat-button-size) + var(--chat-inset));
+}
+
+@media (width >= 48rem) {
+  [data-chat] {
+    --chat-window-width: min(24rem, 100vw - 18rem - 2 * var(--chat-inset));
+  }
+}
+
+@media (width >= 64rem) {
+  [data-chat] [data-shifted] {
+    --chat-window-width: min(24rem, 100vw - 44rem - 2 * var(--chat-inset));
+  }
+}
+
+[data-chat="open"] {
+  --map-controls-lift: calc(var(--chat-window-height) + var(--chat-inset));
+}
+
+/* The controls move with the top edge of the window, with the same time and the same curve. */
+[data-chat] .maplibregl-map .maplibregl-ctrl-bottom-right {
+  translate: 0 calc(-1 * var(--map-controls-lift));
+  transition: translate var(--chat-close-duration) var(--ease-out);
+}
+
+[data-chat="open"] .maplibregl-map .maplibregl-ctrl-bottom-right {
+  transition-duration: var(--chat-open-duration);
+}
+
+/* Reduced motion: the window only fades. The controls go up at once when it opens, and go
+   down when it has faded out. */
+@media (prefers-reduced-motion: reduce) {
+  [data-chat] .maplibregl-map .maplibregl-ctrl-bottom-right {
+    transition: translate 0s linear var(--chat-close-duration);
+  }
+
+  [data-chat="open"] .maplibregl-map .maplibregl-ctrl-bottom-right {
+    transition: none;
+  }
+}
