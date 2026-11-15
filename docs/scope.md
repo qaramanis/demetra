@@ -361,7 +361,7 @@ subjects.
 - **Interface:** `apps/web/components/chat/`. The button expands into the window. On a wide
   screen, the button follows the left edge of the detail panel. The map controls (scale, zoom,
   attribution) are above the button and move up when the window opens. The start view has four
-  suggestions; they use the selected block, or the example block `144_1075` (Colusa County).
+  suggestions; they use the selected block, or the example block `195_1045` (Butte County, model score 0.83 for Rice in 2023).
   A line below the text field gives the data limits.
 - **Session:** the browser keeps the chat in `sessionStorage` (`apps/web/store/chat-store.ts`).
   The chat stays after a page refresh and goes away when the tab closes. "New chat" deletes it.

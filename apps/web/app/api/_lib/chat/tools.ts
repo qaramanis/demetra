@@ -47,7 +47,7 @@ const SOIL_CROPS = 3;
 const blockIdInput = z
   .string()
   .regex(/^\d{1,6}_\d{1,6}$/)
-  .describe("The block id, <column>_<row>, for example 144_1075.");
+  .describe("The block id, <column>_<row>, for example 195_1045.");
 const cropCodeInput = z
   .number()
   .int()

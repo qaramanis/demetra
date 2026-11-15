@@ -1,8 +1,9 @@
 /**
- * The example block of the chat suggestions when no block is selected: a real block in Colusa
- * County with a crop history of all the years and a prediction of the model.
+ * The example block of the chat suggestions when no block is selected: a real block in Butte
+ * County with a crop history of all the years and a model prediction with a high score
+ * (Rice, 0.83). The user wants an example with a score of more than 0.8.
  */
-export const CHAT_EXAMPLE_BLOCK_ID = "144_1075";
+export const CHAT_EXAMPLE_BLOCK_ID = "195_1045";
 
 /** The key of the chat in the session storage of the tab. */
 export const CHAT_STORAGE_KEY = "demetra-chat";
