@@ -1,7 +1,7 @@
 import type { Position } from "geojson";
 import { describe, expect, it } from "vitest";
 
-import { blockSquare } from "./block-grid.ts";
+import { blockCenter, blockSquare } from "./block-grid.ts";
 
 /**
  * Shapes of the database (`ST_AsGeoJSON(geom, 6)` of the table `blocks`): a block in the
@@ -63,5 +63,28 @@ describe("blockSquare", () => {
     expect(blockSquare("100_")).toBeNull();
     expect(blockSquare("100_1077_2")).toBeNull();
     expect(blockSquare("a_b")).toBeNull();
+  });
+});
+
+/** Centers of the database (`lon_center` and `lat_center` of the table `blocks`). */
+const DATABASE_CENTERS: Record<string, [lon: number, lat: number]> = {
+  "100_1077": [-122.688335, 39.10714],
+  "192_1377": [-120.767753, 36.770842],
+  "2_906": [-124.351596, 40.307782],
+  "706_1771": [-114.271543, 34.394438],
+};
+
+describe("blockCenter", () => {
+  it.each(Object.entries(DATABASE_CENTERS))(
+    "gives the center of the database for block %s",
+    (id, center) => {
+      expect(blockCenter(id)).toEqual(center);
+    },
+  );
+
+  it("returns null when the text is not a block id", () => {
+    expect(blockCenter("")).toBeNull();
+    expect(blockCenter("100_")).toBeNull();
+    expect(blockCenter("a_b")).toBeNull();
   });
 });

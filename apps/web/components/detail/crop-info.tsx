@@ -28,7 +28,7 @@ export function LimitIcon({ limits, className }: { limits: MessageKey[]; classNa
   return <Icon aria-hidden="true" className={cn("size-3 shrink-0", className)} />;
 }
 
-/** A small square in the color of a crop class. */
+/** A small square in the color of a crop class, or in a different color of the map. */
 export function CropSwatch({ color, className }: { color: string; className?: string }) {
   return (
     <span

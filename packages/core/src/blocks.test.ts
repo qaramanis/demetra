@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { blockSquare } from "./block-grid.ts";
 import { blockFeatures, blockRow } from "./blocks.ts";
 import type { BlockProperties } from "./blocks.ts";
+import { climateCellRow, climateIndex } from "./climate.ts";
+import type { ClimateValues } from "./climate.ts";
 
 const ALMONDS: BlockProperties = {
   id: "192_1377",
@@ -54,5 +56,26 @@ describe("blockFeatures", () => {
 
   it("gives an empty collection for no rows", () => {
     expect(blockFeatures([])).toEqual({ type: "FeatureCollection", features: [] });
+  });
+});
+
+describe("blockFeatures with the climate of the year", () => {
+  /** The climate cell that contains the center of block 192_1377 (-120.767753, 36.770842). */
+  const CLIMATE: ClimateValues = {
+    tMean: 17.52,
+    heatDays: 90,
+    rainWaterYear: 249.1,
+    rainAnomaly: -26.9,
+  };
+  const climate = climateIndex([climateCellRow(368, -1208, CLIMATE)]);
+
+  it("gives a block the values of the climate cell that contains its center", () => {
+    const [feature] = blockFeatures([blockRow(ALMONDS)], climate).features;
+    expect(feature?.properties).toEqual({ ...ALMONDS, ...CLIMATE });
+  });
+
+  it("adds no climate values to a block that is in no climate cell", () => {
+    const [feature] = blockFeatures([blockRow(FALLOW)], climate).features;
+    expect(feature?.properties).toEqual(FALLOW);
   });
 });

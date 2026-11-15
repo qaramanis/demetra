@@ -3,7 +3,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Polygon } from "geojson";
 
 import { db } from "../client.ts";
-import { blockCrops, blocks, counties, crops } from "../schema.ts";
+import { blockCrops, blocks, climateCells, counties, crops } from "../schema.ts";
 
 /** The color of a crop class that has no color in the `crops` table. */
 const NO_COLOR = "#000000";
@@ -29,8 +29,8 @@ function mainCropCode(rows: readonly { cdlCode: number; cells: number }[]): numb
 }
 
 /**
- * All data of one block in one year: its shape and one row for each county and crop class,
- * with the revenue and the soil values. The largest area is first.
+ * All data of one block in one year: its shape, one row for each county and crop class with
+ * the revenue and the soil values, and the climate of the year. The largest area is first.
  *
  * The result is `null` when the block does not exist. When the block exists but the year
  * has no data for it, the list of crops is empty.
@@ -59,7 +59,33 @@ export async function getBlockDetail(id: string, year: number): Promise<BlockDet
     .where(and(eq(blockCrops.blockId, id), eq(blockCrops.year, year)))
     .orderBy(desc(blockCrops.acres), asc(blockCrops.cdlCode), asc(blockCrops.countyFips));
 
-  const [[block], rows] = await Promise.all([blockRequest, rowsRequest]);
+  // The climate cell that contains the center of the block. The formula of the cell is the
+  // same as `climateCellIndex` of `@demetra/core`, so the map shows the same values.
+  const climateRequest = db
+    .select({
+      tMean: climateCells.tMean,
+      heatDays: climateCells.heatDays,
+      rainWaterYear: climateCells.rainWateryearMm,
+      rainAnomaly: climateCells.rainAnomalyPct,
+    })
+    .from(climateCells)
+    .innerJoin(
+      blocks,
+      and(
+        eq(
+          climateCells.cellLat,
+          sql`(floor(${blocks.latCenter} * 10 + 0.5) / 10)::numeric(4,1)`,
+        ),
+        eq(
+          climateCells.cellLon,
+          sql`(floor(${blocks.lonCenter} * 10 + 0.5) / 10)::numeric(5,1)`,
+        ),
+      ),
+    )
+    .where(and(eq(blocks.blockId, id), eq(climateCells.year, year)))
+    .limit(1);
+
+  const [[block], rows, [climate]] = await Promise.all([blockRequest, rowsRequest, climateRequest]);
   if (!block) return null;
 
   const main = mainCropCode(rows.map(({ row }) => row));
@@ -124,5 +150,6 @@ export async function getBlockDetail(id: string, year: number): Promise<BlockDet
     // Each row of a block has the same value.
     croplandAcres: rows[0]?.row.blockCroplandAcres ?? 0,
     crops: blockCropRows,
+    climate: climate ?? null,
   };
 }

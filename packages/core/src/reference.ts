@@ -18,6 +18,11 @@ export interface County {
 export interface ReferenceData {
   /** The years that have data, the newest first. */
   years: number[];
+  /**
+   * The years after the newest year of `years` that have a prediction of the model team, the
+   * newest first. A prediction is not real data (see `prediction.ts`).
+   */
+  predictionYears: number[];
   /** The crop classes that occur in the data, in the order of their names. */
   crops: Crop[];
   /** The counties, in the order of their names. */

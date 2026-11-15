@@ -1,6 +1,7 @@
 // The tables of the data pipeline, from `drizzle-kit pull`. The pipeline makes and loads them
-// (`schema.sql` and `load_year.sh`): Drizzle only reads them. After a change of the tables,
-// run `pnpm db:pull`, compare `pulled/schema.ts` with this file and copy the changes.
+// (`schema.sql`, `load_year.sh`, `load_climate.sh` and `load_predictions.sh`): Drizzle only
+// reads them. After a change of the tables, run `pnpm db:pull`, compare `pulled/schema.ts` with
+// this file and copy the changes.
 //
 // Differences from the pulled file:
 // - `blocks.geom` has a custom type, because Drizzle can decode only PostGIS points.
@@ -9,6 +10,7 @@
 // - Three column names agree with `SoilValues` in `@demetra/core`: `cecMeq100g`,
 //   `aws0To100Cm` and `soc0To30GM2` (the pulled names are `cecMeq100G`, `aws0100Cm` and
 //   `soc030GM2`).
+// - The three means of `climateCells` end with `Mean6y` (the pulled names end with `Mean6Y`).
 // - The indexes have no operator classes: the pulled operator classes were incorrect.
 // - The view is marked as an existing view.
 //
@@ -19,6 +21,7 @@ import {
   bigint,
   boolean,
   char,
+  check,
   customType,
   doublePrecision,
   foreignKey,
@@ -159,6 +162,129 @@ export const blockCrops = pgTable(
     primaryKey({
       columns: [table.year, table.blockId, table.countyFips, table.cdlCode],
       name: "block_crops_pkey",
+    }),
+  ],
+);
+
+/**
+ * The crop predictions of the model team: one row for each year + block, for a year after the
+ * newest year of `block_crops`. `load_predictions.sh` loads the table.
+ *
+ * `cdlCode` is the predicted majority crop: the crop class with the largest area, when it has
+ * more than 30% of the block (61 = fallow). NULL = no prediction (status
+ * INSUFFICIENT_CROP_HISTORY). `cdlCode2` and `cdlCode3` are the next crops of the model. A score
+ * is the output of the model for a crop, from 0 to 1: it is not an exact probability.
+ */
+export const blockPredictions = pgTable(
+  "block_predictions",
+  {
+    year: smallint().notNull(),
+    blockId: text("block_id").notNull(),
+    status: text().$type<"PREDICTED" | "INSUFFICIENT_CROP_HISTORY">().notNull(),
+    cdlCode: smallint("cdl_code"),
+    score: real(),
+    cdlCode2: smallint("cdl_code_2"),
+    score2: real("score_2"),
+    cdlCode3: smallint("cdl_code_3"),
+    score3: real("score_3"),
+  },
+  (table) => [
+    index("block_predictions_year_crop_idx").on(table.year, table.cdlCode),
+    foreignKey({
+      columns: [table.blockId],
+      foreignColumns: [blocks.blockId],
+      name: "block_predictions_block_id_fkey",
+    }),
+    foreignKey({
+      columns: [table.cdlCode],
+      foreignColumns: [crops.cdlCode],
+      name: "block_predictions_cdl_code_fkey",
+    }),
+    foreignKey({
+      columns: [table.cdlCode2],
+      foreignColumns: [crops.cdlCode],
+      name: "block_predictions_cdl_code_2_fkey",
+    }),
+    foreignKey({
+      columns: [table.cdlCode3],
+      foreignColumns: [crops.cdlCode],
+      name: "block_predictions_cdl_code_3_fkey",
+    }),
+    primaryKey({ columns: [table.year, table.blockId], name: "block_predictions_pkey" }),
+    check(
+      "block_predictions_status_check",
+      sql`status = ANY (ARRAY['PREDICTED'::text, 'INSUFFICIENT_CROP_HISTORY'::text])`,
+    ),
+    check(
+      "block_predictions_crop_check",
+      sql`((status = 'PREDICTED'::text) = (cdl_code IS NOT NULL)) AND ((cdl_code IS NULL) = (score IS NULL))`,
+    ),
+    check(
+      "block_predictions_next_check",
+      sql`((cdl_code_2 IS NULL) = (score_2 IS NULL)) AND ((cdl_code_3 IS NULL) = (score_3 IS NULL))`,
+    ),
+    check(
+      "block_predictions_score_check",
+      sql`((score >= (0)::double precision) AND (score <= (1)::double precision)) AND ((score_2 >= (0)::double precision) AND (score_2 <= (1)::double precision)) AND ((score_3 >= (0)::double precision) AND (score_3 <= (1)::double precision))`,
+    ),
+  ],
+);
+
+/**
+ * One row for each year + climate cell of 0.1 degrees (approximately 10 km). The center of a
+ * cell is at a multiple of 0.1 degrees. The cell of a block:
+ *
+ *     cell_lat = floor(lat_center * 10 + 0.5) / 10, and the same for cell_lon
+ *
+ * The values are estimates: the pipeline (`build_climate_grid.py`) interpolates them from the
+ * NASA POWER source cells of approximately 50 km. `load_climate.sh` loads the table.
+ */
+export const climateCells = pgTable(
+  "climate_cells",
+  {
+    year: smallint().notNull(),
+    /** Latitude of the cell center, in degrees. */
+    cellLat: numeric("cell_lat", { precision: 4, scale: 1, mode: "number" }).notNull(),
+    /** Longitude of the cell center, in degrees. */
+    cellLon: numeric("cell_lon", { precision: 5, scale: 1, mode: "number" }).notNull(),
+    /** `false` = a cell around the cells that have blocks. */
+    hasBlock: boolean("has_block").notNull(),
+    /** Mean temperature of the year, °C. */
+    tMean: real("t_mean").notNull(),
+    /** Mean daily maximum from June to August, °C. */
+    tmaxSummerMean: real("tmax_summer_mean").notNull(),
+    /** Mean daily minimum from December of the year before to February, °C. */
+    tminWinterMean: real("tmin_winter_mean").notNull(),
+    /** Days with a minimum below 0 °C. */
+    frostDays: smallint("frost_days").notNull(),
+    /** Days with a maximum of 35 °C or more. */
+    heatDays: smallint("heat_days").notNull(),
+    /** Growing degree days: base 10 °C, limit 30 °C. */
+    gdd10: real().notNull(),
+    rainYearMm: real("rain_year_mm").notNull(),
+    /** Rain from October of the year before to September. */
+    rainWateryearMm: real("rain_wateryear_mm").notNull(),
+    rainSummerMm: real("rain_summer_mm").notNull(),
+    /** Reference evapotranspiration from April to September. */
+    et0GsMm: real("et0_gs_mm").notNull(),
+    /** Rain − reference evapotranspiration, from April to September. */
+    waterBalanceGsMm: real("water_balance_gs_mm").notNull(),
+    /** Root zone soil wetness, 0 to 1. */
+    soilwetRootMean: real("soilwet_root_mean").notNull(),
+    soilwetRootSummer: real("soilwet_root_summer").notNull(),
+    /** Days with data in the year. */
+    nDays: smallint("n_days").notNull(),
+    // The means of all the years of the cell.
+    rainWateryearMmMean6y: real("rain_wateryear_mm_mean6y").notNull(),
+    heatDaysMean6y: real("heat_days_mean6y").notNull(),
+    tMeanMean6y: real("t_mean_mean6y").notNull(),
+    /** 100 × (rain of the water year / its mean of all the years − 1). */
+    rainAnomalyPct: real("rain_anomaly_pct").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.year, table.cellLat, table.cellLon],
+      name: "climate_cells_pkey",
     }),
   ],
 );

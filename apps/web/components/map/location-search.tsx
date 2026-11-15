@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LoaderCircle, MapPin, Search } from "lucide-react";
 import { useMap } from "react-map-gl/maplibre";
@@ -21,6 +21,7 @@ export function LocationSearch({ className }: { className?: string }) {
   const [submitted, setSubmitted] = useState("");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const hintId = useId();
 
   const search = useQuery({
     queryKey: ["places", submitted],
@@ -86,12 +87,28 @@ export function LocationSearch({ className }: { className?: string }) {
           }}
           placeholder={t("search.placeholder")}
           aria-label={t("search.label")}
-          className="pl-8"
+          aria-describedby={hintId}
+          // The space for the key is there only while the key shows. On a narrow screen the
+          // placeholder then has the full width.
+          className="peer pl-8 pointer-fine:focus:not-placeholder-shown:pr-14"
         />
+        {/* The search starts only on Enter. While the field has focus and text, the key shows
+            at the right end. A touch keyboard has its own search key, so the key does not show
+            for touch. */}
+        <kbd
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-1.5 hidden -translate-y-1/2 rounded-sm border bg-muted px-1.5 font-sans text-[0.7rem] leading-4 font-medium text-muted-foreground pointer-fine:peer-[:focus:not(:placeholder-shown)]:block"
+        >
+          {t("search.enterKey")}
+        </kbd>
+        <span id={hintId} className="sr-only">
+          {t("search.hint")}
+        </span>
       </form>
 
       {open && (
-        <div className="absolute top-full right-0 z-30 mt-1.5 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
+        // The results have the width of the field and grow down from it.
+        <div className="absolute inset-x-0 top-full z-30 mt-1.5 origin-top animate-in overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md duration-150 ease-out fade-in zoom-in-95">
           {search.isFetching ? (
             <p className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
               <LoaderCircle className="size-4 animate-spin" />

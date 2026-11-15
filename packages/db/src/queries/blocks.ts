@@ -1,9 +1,25 @@
-import { MAX_BLOCKS, blockRow } from "@demetra/core";
-import type { BlockProperties, BlockRow, BlocksQuery, BlocksResponse } from "@demetra/core";
-import { and, eq, sql } from "drizzle-orm";
+import { MAX_BLOCKS, MIN_CROP_CELLS_IN_LARGE_VIEW, blockRow } from "@demetra/core";
+import type {
+  BlockProperties,
+  BlockRow,
+  BlocksQuery,
+  BlocksResponse,
+  SmallBlocksOmitted,
+} from "@demetra/core";
+import { and, eq, gt, sql } from "drizzle-orm";
 
 import { db } from "../client.ts";
 import { blockCrops, blocks } from "../schema.ts";
+
+/** One cell of 30 m x 30 m in acres. */
+const ACRES_PER_CELL = (30 * 30) / 4046.8564224;
+
+/**
+ * The cropland of a block with `MIN_CROP_CELLS_IN_LARGE_VIEW` crop cells or more is larger
+ * than this. `block_cropland_acres` is the cells of the block in acres, with one decimal:
+ * 4 cells are 0.9 acres and 5 cells are 1.1 acres. The limit is between the two values.
+ */
+const MIN_CROPLAND_ACRES_IN_LARGE_VIEW = (MIN_CROP_CELLS_IN_LARGE_VIEW - 0.5) * ACRES_PER_CELL;
 
 /**
  * The blocks of a map area, each with the values of its crops that agree with the filters.
@@ -23,13 +39,39 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
   // `&&` compares bounding boxes and uses the spatial index of `blocks.geom`.
   const inArea = sql`${blocks.geom} && ST_MakeEnvelope(${west}, ${south}, ${east}, ${north}, 4326)`;
 
-  const [total] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(blocks)
-    .where(inArea);
-  const count = total?.count ?? 0;
-  if (count > MAX_BLOCKS) return { status: "tooMany", count, limit: MAX_BLOCKS };
+  // The limit is for the blocks of the selected year: the `blocks` table has the blocks of all
+  // the years, and a block is not in each year. In a year, a block has one row that is its main
+  // crop, so these rows give the number of blocks. The index `block_crops_main_idx` has them.
+  const countBlocks = async (...conditions: Parameters<typeof and>) => {
+    const [total] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(blockCrops)
+      .innerJoin(blocks, eq(blocks.blockId, blockCrops.blockId))
+      .where(
+        and(eq(blockCrops.year, year), eq(blockCrops.isBlockMainCrop, true), inArea, ...conditions),
+      );
+    return total?.count ?? 0;
+  };
+
+  const count = await countBlocks();
   if (count === 0) return { status: "ok", rows: [] };
+
+  // Too many blocks for one answer: the answer is then without the blocks that have very
+  // little cropland. All the rows of a block have the cropland of the full block, so this
+  // condition removes all the rows of a small block.
+  const largeBlocksOnly =
+    count > MAX_BLOCKS
+      ? gt(blockCrops.blockCroplandAcres, MIN_CROPLAND_ACRES_IN_LARGE_VIEW)
+      : undefined;
+  let smallBlocksOmitted: SmallBlocksOmitted | undefined;
+  if (largeBlocksOnly) {
+    const largeCount = await countBlocks(largeBlocksOnly);
+    if (largeCount > MAX_BLOCKS) return { status: "tooMany", count, limit: MAX_BLOCKS };
+    smallBlocksOmitted = {
+      minCropCells: MIN_CROP_CELLS_IN_LARGE_VIEW,
+      count: count - largeCount,
+    };
+  }
 
   // The "C" collation compares bytes. The sort of the block ids is then much faster than
   // with the collation of the database, and the order of the groups is not important.
@@ -64,6 +106,7 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
       and(
         eq(blockCrops.year, year),
         inArea,
+        largeBlocksOnly,
         cropCode === null ? undefined : eq(blockCrops.cdlCode, cropCode),
         countyFips === null ? undefined : eq(blockCrops.countyFips, countyFips),
       ),
@@ -114,5 +157,5 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
     rows.push(blockRow(properties));
   }
 
-  return { status: "ok", rows };
+  return smallBlocksOmitted ? { status: "ok", rows, smallBlocksOmitted } : { status: "ok", rows };
 }

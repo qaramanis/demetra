@@ -1,5 +1,7 @@
 import type { Polygon } from "geojson";
 
+import type { ClimateValues } from "./climate.ts";
+
 /**
  * How the revenue of a crop class was found in the county data.
  * - `direct`: one county commodity agrees with the crop class.
@@ -93,4 +95,9 @@ export interface BlockDetail {
   croplandAcres: number;
   /** One row for each county and crop class. The largest area is first. */
   crops: BlockCrop[];
+  /**
+   * The climate of the year, from the climate cell of the block: an estimate for a cell of
+   * approximately 10 km. `null` = the year has no climate data.
+   */
+  climate: ClimateValues | null;
 }
