@@ -6,12 +6,9 @@ import { MapProvider } from "react-map-gl/maplibre";
 import { DetailPanel } from "@/components/detail/detail-panel";
 import { FiltersSidebar } from "@/components/filters/filters-sidebar";
 import { FiltersToggle } from "@/components/filters/filters-toggle";
-import { Legend } from "@/components/legend/legend";
-import { BasemapToggle } from "@/components/map/basemap-toggle";
 import { HoverTooltip } from "@/components/map/hover-tooltip";
 import { LocationSearch } from "@/components/map/location-search";
 import { MapStatus } from "@/components/map/map-status";
-import { RegionPresets } from "@/components/map/region-presets";
 import { useT } from "@/i18n";
 
 import { TopBar } from "./top-bar";
@@ -19,7 +16,8 @@ import { TopBar } from "./top-bar";
 function MapLoading() {
   const t = useT();
   return (
-    <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+    // The text shows only after 300 ms, so a fast load does not flash it.
+    <div className="absolute inset-0 grid animate-in place-items-center text-sm text-muted-foreground delay-300 duration-200 ease-out fill-mode-backwards fade-in">
       {t("map.loading")}
     </div>
   );
@@ -39,29 +37,20 @@ export function AppShell() {
   return (
     <MapProvider>
       <div className="flex h-dvh flex-col">
-        <TopBar>
-          <FiltersToggle />
-          <LocationSearch className="w-full max-w-72" />
-          <RegionPresets />
-        </TopBar>
+        <TopBar center={<LocationSearch className="w-full" />} end={<FiltersToggle />} />
         <div className="relative flex min-h-0 flex-1">
           <FiltersSidebar />
           <main className="relative min-w-0 flex-1 bg-muted">
             <MapView />
             <HoverTooltip />
-            {/* The controls above the map. On a narrow map the status message has its own row. */}
-            <div className="pointer-events-none absolute inset-x-3 top-3 z-10 @container">
-              <div className="flex flex-wrap items-start gap-2">
-                <div className="order-3 flex basis-full justify-center @4xl:order-2 @4xl:flex-1 @4xl:basis-0">
-                  <MapStatus />
-                </div>
-                <div className="pointer-events-auto order-2 ml-auto flex items-center gap-2 @4xl:order-3 @4xl:ml-0">
-                  <BasemapToggle />
-                </div>
+            {/* The status message is at the bottom centre of the map. On a wide map, the same
+                padding on the two sides keeps the message centred and out of the expanded
+                attribution (352 px = 88). On a narrow map, the message goes up above the
+                attribution, and the padding keeps it out of the zoom buttons. */}
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 @container">
+              <div className="flex justify-center px-10 pb-8 @5xl:px-88 @5xl:pb-0">
+                <MapStatus />
               </div>
-            </div>
-            <div className="absolute bottom-3 left-3 z-10">
-              <Legend />
             </div>
           </main>
           <DetailPanel />

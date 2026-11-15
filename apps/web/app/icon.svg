@@ -1,6 +1,7 @@
 <!-- The favicon drawing of the Demetra mark: two rows of kernels and no channel, so that it
-     stays clear at 16 px. The full mark is in components/layout/logo.tsx. -->
+     stays clear at 16 px. The square has the accent colour of the interface (#668e7d). The
+     full mark is in components/layout/logo.tsx. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#26231f"/>
+  <rect width="32" height="32" rx="7" fill="#668e7d"/>
   <path d="M16 3.25 19 10.25 16 13.25 13 10.25ZM8 7.75 16 15.75 24 7.75 21.5 13.75 16 19.25 10.5 13.75ZM8 13.75 16 21.75 24 13.75 21.5 19.75 17.5 23.75V25.25L16 28.75 14.5 25.25V23.75L10.5 19.75Z" fill="#fff"/>
 </svg>

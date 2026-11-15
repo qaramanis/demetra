@@ -6,8 +6,8 @@ import { cachedJson, serverError } from "../_lib/request";
 /**
  * `GET /api/reference`
  *
- * The values that the filters offer: the years that have data, the crop classes and the
- * counties. The answer is a `ReferenceData` object.
+ * The values that the filters offer: the years that have data, the years that have a
+ * prediction, the crop classes and the counties. The answer is a `ReferenceData` object.
  */
 export async function GET() {
   // This handler does not read the request. Without this line, Next.js tries to make the

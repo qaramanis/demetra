@@ -1,7 +1,7 @@
 # Demetra
 
 pnpm workspace monorepo. A map dashboard for the cropland of California: crops, estimated
-revenue and soil for each block of 990 m, for each year. The data is real (USDA datasets) and
+revenue, soil and climate for each block of 990 m, for each year. The data is real (USDA datasets) and
 is in a Postgres + PostGIS database.
 
 **Read `docs/scope.md` first.** It has the scope, the database tables, the data limits, and
@@ -14,8 +14,8 @@ removed: the mock provider, the six metrics, the five crops, the UTM and EEA gri
 rotation strategies and the tool that draws custom fields. Do not add it again.
 
 - `apps/web` — the Next.js dashboard. Its own `AGENTS.md` applies there, not here.
-  - `app/api/` — the GET Route Handlers that the browser calls: `reference`, `blocks` and
-    `blocks/[id]`.
+  - `app/api/` — the GET Route Handlers that the browser calls: `reference`, `blocks`,
+    `blocks/[id]`, `climate`, `predictions` and `predictions/[id]`.
   - `data/api.ts` and `data/queries.ts` — the requests to these routes and the TanStack Query
     hooks.
 - `packages/core` — shared types and constants: the contract between the server code and the
@@ -27,7 +27,8 @@ rotation strategies and the tool that draws custom fields. Do not add it again.
 
 - Database: Postgres 17 + PostGIS, container `demetra-db`, `127.0.0.1:5433`, database and user
   `cropland`. The password is in `/Users/apostoloskaramanis/Downloads/cdl_soil_unified/db/.env`.
-- Tables: `blocks`, `block_crops`, `crops`, `counties`, and the view `block_main_crop`.
+- Tables: `blocks`, `block_crops`, `crops`, `counties`, `climate_cells`, `block_predictions`
+  (the crop predictions of the model team), and the view `block_main_crop`.
 - The data pipeline is outside this repository, in `/Users/apostoloskaramanis/Downloads/cdl_soil_unified/`.
   Do not add the pipeline scripts to this repository.
 
@@ -44,7 +45,9 @@ rotation strategies and the tool that draws custom fields. Do not add it again.
   exceeds the size limits of the host.
 - A block has more than one crop. Do not show the main crop as the only crop of a block.
 - Show the data limits in the interface (county averages, unreliable grain revenue, no revenue
-  for fallow land).
+  for fallow land, climate values that are estimates for cells of 10 km).
+- The answer of `/api/blocks` has no climate values. The browser gets the climate cells of the
+  year from `/api/climate` and finds the cell of each block (`packages/core/src/climate.ts`).
 - Do not commit the database password. Use an environment file that is not committed.
 - Internal packages export TypeScript source (`"exports": "./src/index.ts"`). There is no
   build step for them.

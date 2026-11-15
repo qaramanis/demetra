@@ -71,8 +71,9 @@ function CropRow({
         onClick={onSelect}
         className={cn(
           "col-span-5 grid grid-cols-subgrid items-center rounded-md px-2 py-1.5 text-left text-xs",
-          "transition-colors outline-none hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50",
-          selected && "bg-muted ring-1 ring-foreground/25 hover:bg-muted",
+          "transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+          // The selected row has a light fill and a thin line of the accent colour.
+          selected ? "bg-primary/12 ring-1 ring-primary/45" : "hover:bg-accent/60",
         )}
       >
         <span className="flex min-w-0 items-center gap-2">

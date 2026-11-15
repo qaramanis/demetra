@@ -1,4 +1,4 @@
-import type { BlockProperties } from "@demetra/core";
+import type { MapBlockProperties } from "@demetra/core";
 import { create } from "zustand";
 
 /** The block under the pointer. */
@@ -7,7 +7,7 @@ export interface HoveredBlock {
   x: number;
   y: number;
   /** The values of the block. `properties.id` is the id of the block. */
-  properties: BlockProperties;
+  properties: MapBlockProperties;
 }
 
 interface HoverState {

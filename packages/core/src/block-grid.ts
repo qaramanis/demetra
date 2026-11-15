@@ -9,10 +9,11 @@ import type { Polygon, Position } from "geojson";
  * browser calculates them here. With the shapes, the answer for the full state has 25 MB.
  * Without them it has 3 MB.
  *
- * The data pipeline makes the same squares for the column `blocks.geom`. For all the 113,858
- * blocks of the database (2017 and 2018), the result of `blockSquare` is equal to `ST_AsGeoJSON(geom, 6)`:
- * the same corners, in the same order. If the pipeline changes the grid, change the constants
- * here too.
+ * The data pipeline makes the same squares for the column `blocks.geom`. For all the 156,163
+ * blocks of the database (2017 to 2022), the result of `blockSquare` is equal to
+ * `ST_AsGeoJSON(geom, 6)`: the same corners, in the same order. The result of `blockCenter` is
+ * equal to `lon_center` and `lat_center`. If the pipeline changes the grid, change the
+ * constants here too.
  */
 
 /** The top left corner of the grid, in metres of EPSG:5070. */
@@ -71,7 +72,7 @@ const LATITUDE_STEPS = 5;
 const roundDegrees = (value: number): number => Math.round(value * 1e6) / 1e6;
 
 /** The longitude and the latitude, in degrees, of a point of EPSG:5070 in metres. */
-function toLonLat(x: number, y: number): Position {
+function toLonLat(x: number, y: number): [lon: number, lat: number] {
   const dy = ORIGIN_RADIUS_M - y;
   const radius = Math.hypot(x, dy);
   const angle = Math.atan2(x, dy);
@@ -110,11 +111,29 @@ export function blockSquare(id: string): Polygon | null {
   const right = left + BLOCK_SIZE_M;
   const bottom = top - BLOCK_SIZE_M;
 
-  const first = toLonLat(left, bottom);
+  const first: Position = toLonLat(left, bottom);
   return {
     type: "Polygon",
     coordinates: [
       [first, toLonLat(left, top), toLonLat(right, top), toLonLat(right, bottom), [...first]],
     ],
   };
+}
+
+/**
+ * The center of a block as [longitude, latitude] in WGS84, or `null` when the text is not a
+ * block id.
+ *
+ * The data pipeline calculates `blocks.lon_center` and `blocks.lat_center` from the same
+ * point. The center gives the climate cell of the block, so the browser and the database
+ * must find the same cell.
+ */
+export function blockCenter(id: string): [lon: number, lat: number] | null {
+  const match = BLOCK_ID.exec(id);
+  if (!match) return null;
+
+  return toLonLat(
+    GRID_ORIGIN_X_M + (Number(match[1]) + 0.5) * BLOCK_SIZE_M,
+    GRID_ORIGIN_Y_M - (Number(match[2]) + 0.5) * BLOCK_SIZE_M,
+  );
 }

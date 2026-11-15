@@ -2,6 +2,22 @@
 // this package does not build.
 export { db } from "./client.ts";
 
-export { blockCrops, blockMainCrop, blocks, counties, crops } from "./schema.ts";
+export {
+  blockCrops,
+  blockMainCrop,
+  blockPredictions,
+  blocks,
+  climateCells,
+  counties,
+  crops,
+} from "./schema.ts";
 
-export { getBlockDetail, getBlocks, getReferenceData } from "./queries/index.ts";
+export {
+  getBlockDetail,
+  getBlockPrediction,
+  getBlocks,
+  getClimateCells,
+  getPredictedBlocks,
+  getPredictionYears,
+  getReferenceData,
+} from "./queries/index.ts";

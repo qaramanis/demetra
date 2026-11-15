@@ -5,7 +5,8 @@ import { translate } from "@/i18n";
 
 function DashboardLoading() {
   return (
-    <div className="grid h-dvh place-items-center text-sm text-muted-foreground">
+    // The text shows only after 300 ms, so a fast load does not flash it.
+    <div className="grid h-dvh animate-in place-items-center text-sm text-muted-foreground delay-300 duration-200 ease-out fill-mode-backwards fade-in">
       {translate("map.loading")}
     </div>
   );

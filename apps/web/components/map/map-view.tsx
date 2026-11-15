@@ -2,7 +2,8 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { BlockProperties } from "@demetra/core";
+import { CLIMATE_METRIC_IDS } from "@demetra/core";
+import type { BlockProperties, MapBlockProperties } from "@demetra/core";
 import type { Polygon } from "geojson";
 import * as maplibregl from "maplibre-gl";
 import { useCallback, useMemo, useRef } from "react";
@@ -17,7 +18,7 @@ import Map, {
 
 import { BASEMAP_STYLES } from "@/config/basemaps";
 import { DATA_BOUNDS, MAP_ID } from "@/config/regions";
-import { useBlocks } from "@/data/queries";
+import { useBlocks, useReferenceData } from "@/data/queries";
 import { useAppStore } from "@/store/app-store";
 import { useHoverStore } from "@/store/hover-store";
 
@@ -60,14 +61,27 @@ function readViewport(map: MapInstance) {
 }
 
 /** The values of a rendered block. The result is `null` when a necessary value is absent. */
-function blockPropertiesOf(properties: Record<string, unknown>): BlockProperties | null {
-  const { id, crop, share, crops, acres, revenue, storie } = properties;
-  if (typeof id !== "string" || typeof crop !== "number" || typeof share !== "number") return null;
-  if (typeof crops !== "number" || typeof acres !== "number") return null;
+function blockPropertiesOf(properties: Record<string, unknown>): MapBlockProperties | null {
+  const { id, crop, share, crops, acres, revenue, storie, predicted, score } = properties;
+  if (typeof id !== "string" || typeof crop !== "number") return null;
+  // A predicted block has only its predicted crop, and its model score when it has one.
+  if (predicted === true) {
+    return typeof score === "number"
+      ? { id, crop, score, predicted: true }
+      : { id, crop, predicted: true };
+  }
+  if (typeof share !== "number" || typeof crops !== "number" || typeof acres !== "number") {
+    return null;
+  }
   const values: BlockProperties = { id, crop, share, crops, acres };
   // A block without revenue data or soil data does not have these properties.
   if (typeof revenue === "number") values.revenue = revenue;
   if (typeof storie === "number") values.storie = storie;
+  // A block has the climate values only when the climate of the year is loaded.
+  for (const metric of CLIMATE_METRIC_IDS) {
+    const value = properties[metric];
+    if (typeof value === "number") values[metric] = value;
+  }
   return values;
 }
 
@@ -80,6 +94,10 @@ export default function MapView() {
 
   const blocks = useBlocks();
   const labelLayerId = useLabelLayerId(basemap);
+  // `idle`: the first request waits for the list of years. If the list does not load, the
+  // request does not start, and the blocks are not loading.
+  const referencePending = useReferenceData().isPending;
+  const requesting = blocks.isFetching || (blocks.status === "idle" && referencePending);
 
   /**
    * The original geometry of each block, by block id. One answer can have more than 100,000 blocks, so
@@ -204,7 +222,7 @@ export default function MapView() {
       {/* The areas of the data are in acres, so the scale shows miles and feet. */}
       <ScaleControl position="bottom-right" unit="imperial" />
 
-      <BlocksLayer data={blocks.data} beforeId={labelLayerId} />
+      <BlocksLayer data={blocks.data} requesting={requesting} beforeId={labelLayerId} />
       <SelectionLayer beforeId={labelLayerId} />
       <KeepSelectionVisible />
     </Map>
