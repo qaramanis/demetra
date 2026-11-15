@@ -23,8 +23,9 @@ data (for example, the crop of the next year). The dashboard will show their res
 | County Agricultural Commissioners' data | USDA NASS | One CSV for each year | Yield, price and value for each county and crop |
 | TIGER/Line 2017 counties | US Census | Vector | County of each cell |
 
-- **Area:** the 58 counties of California. Cropland only (43.8 million cells of 30 m, 9.75 million acres in 2017).
-- **Years:** 2017 is processed and loaded. 2018 to 2022 are planned.
+- **Area:** the 58 counties of California. Cropland only (43.8 million cells of 30 m and 9.75 million
+  acres in 2017; 45.3 million cells and 10.06 million acres in 2018).
+- **Years:** 2017 and 2018 are processed and loaded in the local database. 2019 to 2022 are planned.
 - **Grid:** the national CDL grid, EPSG:5070 (NAD83 / Conus Albers), origin x = -2356095, y = 3172605.
 - **Units:** acres and US dollars.
 - The 10 m CDL exists for 2024 and 2025 only. The project uses the 30 m grid.
@@ -38,21 +39,31 @@ The scripts run with the conda environment `sars` (GDAL, rasterio, geopandas, pa
 |---|---|
 | `scripts/` | The Python and shell scripts |
 | `work/` | California grids (`cdl_ca.tif`, `county_ca.tif`, `mukey_ca_30m.tif`) and lookup tables. It holds one year at a time. |
-| `output/` | `california_<year>_blocks_990m.csv` (loaded in the database), the 30 m cell file (13.7 GB, optional), the county + crop + soil summary |
+| `output/` | `california_<year>_blocks_990m.csv` (loaded in the database), the 30 m cell file (13.7 GB, optional, kept for 2017 only), the county + crop + soil summary |
 | `db/` | `docker-compose.yml`, `Dockerfile`, `schema.sql`, `load_year.sh`, `.env` (password) |
 | `model_data/` | The package for the model team: `common/` + one folder for each year + `README.md` |
 
 Steps for a new year:
 
-1. Cut the CDL of that year to the California window (`prep_rasters.py` does this. Its soil step is
-   out of date: `mukey_mode.py` made the correct soil grid, and that grid is not made again).
-2. `build_tables.py`: soil table and county revenue table. The county files of 2020, 2021 and 2022
-   have different column names and layouts. The script must be adapted for them.
+1. `prep_rasters.py <cdl.tif> <gSSURGO.gdb> <county zip> <work>`: cut the CDL of that year to the
+   California window. Its soil step is out of date: `mukey_mode.py` made the correct soil grid. The
+   script keeps `work/mukey_ca_30m.tif` if the file exists and does not make it again.
+2. `build_tables.py <gSSURGO.gdb> <county csv> <cdl.tif> <work> <output>`: soil table and county
+   revenue table. A crop name that is not in the county file of a year gives no rows (the 2018 file
+   does not have 6 of the names). The county files of 2020, 2021 and 2022 have different column
+   names and layouts. The script must be adapted for them.
 3. `build_blocks.py <work> <output> <year>`: the 990 m block file.
-4. `db/load_year.sh <year> <block csv>`: load the year. It replaces only that year.
-5. `scripts/package_year.sh <year> <county csv>`: the folder for the model team.
+4. `build_cells.py <work> <output> <year>`: the county + crop + soil summary, which step 6 and
+   `check_blocks.py` use. It also writes the 30 m cell file (14 GB). Delete the cell file after the
+   checks.
+5. `check_blocks.py` and `check_output.py`: the checks. Then `db/load_year.sh <year> <block csv>`:
+   load the year in the local database. It replaces only that year.
+6. `scripts/package_year.sh <year> <county csv>`: the folder for the model team.
 
-The original downloads are in `/Users/apostoloskaramanis/Downloads/2017 open data/`.
+The original downloads of 2017 and the soil database `gSSURGO_CA.gdb` (necessary for all years) are in
+`/Users/apostoloskaramanis/Downloads/2017 open data/`. The original downloads of 2018 were deleted
+on 2026-11-15, after the checks of the 2018 data. Steps 2 and 5 need the national CDL file of the
+year, so do them before the deletion.
 
 ## Database
 
@@ -78,7 +89,7 @@ same rows, the same indexes and the view.
 | Plan | Launch (pay for use). One year is approximately 250 MB. |
 | Connection string | `NEON_DATABASE_URL` in `/Users/apostoloskaramanis/Downloads/cdl_soil_unified/db/.env.neon` |
 
-- `load_year.sh` loads the local database only. It does not load Neon.
+- `load_year.sh` loads the local database only. It does not load Neon. The 2018 data is not in Neon.
 - To use Neon in the application, put the connection string in `DATABASE_URL` in
   `apps/web/.env.local`. It works with no other change.
 
@@ -86,11 +97,15 @@ same rows, the same indexes and the view.
 
 | Table | Rows | Content |
 |---|---|---|
-| `blocks` | 86,623 | `block_id`, `block_col`, `block_row`, center, `geom` (the square, EPSG:4326, GiST index), `center` |
-| `block_crops` | 544,039 for each year | Key: `year`, `block_id`, `county_fips`, `cdl_code` |
+| `blocks` | 113,858 (all years) | `block_id`, `block_col`, `block_row`, center, `geom` (the square, EPSG:4326, GiST index), `center` |
+| `block_crops` | 544,039 for 2017, 678,160 for 2018 | Key: `year`, `block_id`, `county_fips`, `cdl_code` |
 | `crops` | 135 | `cdl_code`, `cdl_class`, `color` (official CDL color) |
 | `counties` | 58 | `county_fips`, `county_name` |
-| `block_main_crop` (view) | 86,623 for each year | The main crop of each block with `geom`, crop name, color, revenue and soil quality |
+| `block_main_crop` (view) | 86,623 for 2017, 109,490 for 2018 | The main crop of each block with `geom`, crop name, color, revenue and soil quality |
+
+The row counts are for the local database. A block is in `blocks` if it has cropland in one year or
+more: 82,255 blocks have cropland in the two years, 4,368 only in 2017 and 27,235 only in 2018. The
+blocks that are only in 2018 are small (median: 2 crop cells) and have 0.8% of the 2018 crop cells.
 
 ### `block_crops` columns
 
@@ -118,8 +133,10 @@ same rows, the same indexes and the view.
 
 - Revenue and yield are county averages. They are not values for a field.
 - Grain revenue (wheat, barley, oats, triticale) is not reliable.
-- Fallow land has no revenue. Revenue covers 75% of the crop cells (county) and 83% (state average).
-- Crop classes come from satellite images and have errors.
+- Fallow land has no revenue. Revenue covers 75% of the crop cells (county) and 83% (state average)
+  in 2017, and 74% and 80% in 2018.
+- Crop classes come from satellite images and have errors. Some differences between years are
+  classification changes and not real changes: avocados have 0 cells in 2017 and 270,507 in 2018.
 - Soil maps are correct for 1 to 10 acres, not for one cell.
 - There is no weather data, no water data and no cost data. Profit cannot be calculated.
 
@@ -184,11 +201,20 @@ Possible with the 2017 data:
   `/api/blocks/<id>`) with TanStack Query. They are not Server Functions (`"use server"`): Next.js
   runs Server Functions one at a time and recommends Route Handlers for requests that read data.
 - The map requests only the blocks in the visible area (`geom && ST_MakeEnvelope(...)`), with a limit
-  on the number of blocks (`MAX_BLOCKS`, 100,000). The full state has 86,623 blocks, so the first
-  view shows all of them. This answer has 3.1 MB (0.9 MB with gzip) and takes less than 1 second.
+  on the number of blocks (`MAX_BLOCKS`, 115,000). The full state has 86,623 blocks in 2017, so the
+  first view shows all of them. This answer has 3.1 MB (0.9 MB with gzip) and takes less than 1 second.
+- **Blocks of one year (2026-11-15):** the answer has only the blocks of the selected year, and
+  `getBlocks` compares the number of these blocks with `MAX_BLOCKS` (115,000). It counts the main
+  crop rows of that year in the area, with the index `block_crops_main_idx`. It does not count the
+  `blocks` table, which has the blocks of all the years (113,858). The full state is one answer for
+  each year: 86,623 blocks and 3.1 MB for 2017, 109,490 blocks and 3.9 MB (1.1 MB with gzip) for
+  2018, in 1 second. A block has 36 to 37 bytes in the answer, so 115,000 blocks have approximately
+  4.2 MB. A year with more than 115,000 blocks gives `tooMany` for the full state: do not increase
+  the limit then, because the answer exceeds the 4.5 MB of the host. Decrease the number of blocks
+  (for example, without the blocks that have very few crop cells).
 - The answer of `/api/blocks` has one row of values for each block and no shapes. The browser
   calculates the square of a block from its id (`blockSquare` in `packages/core/src/block-grid.ts`,
-  used by `blockFeatures`). For all the blocks of 2017, the result is equal to
+  used by `blockFeatures`). For all the blocks of 2017 and 2018, the result is equal to
   `ST_AsGeoJSON(geom, 6)`. With the shapes, the answer for the full state had 24.9 MB. That is more
   than the limits of Vercel for the answer of a function (4.5 MB) and for the CDN cache (10 MB). Do
   not add the shapes to the answer. If the pipeline changes the grid, change the constants in

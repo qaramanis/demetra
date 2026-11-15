@@ -23,7 +23,7 @@ const HOVERED: ExpressionSpecification = ["boolean", ["feature-state", "hover"],
 
 /**
  * The line layers start at this zoom. Below it a block is smaller than 4 pixels, and the
- * view can contain all the 86,623 blocks of the state: MapLibre then does not make and draw
+ * view can contain all the blocks of the state (109,490 in 2018): MapLibre then does not make and draw
  * a line for each block. Below this zoom the map also sets no hover state.
  */
 export const LINES_MIN_ZOOM = 8;

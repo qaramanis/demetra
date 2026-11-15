@@ -112,7 +112,7 @@ export function useBlocks() {
     enabled: bbox !== null && filters !== null,
     // Keep the blocks on the map while the next blocks load.
     placeholderData: keepPreviousData,
-    // An answer can have 86,623 blocks. A deep comparison with the previous answer is slow
+    // An answer can have more than 100,000 blocks. A deep comparison with the previous answer is slow
     // and has no use, and an old answer must not stay in memory for a long time.
     structuralSharing: false,
     gcTime: 60 * 1000,

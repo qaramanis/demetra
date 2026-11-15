@@ -4,10 +4,11 @@ import { blockSquare } from "./block-grid.ts";
 import type { BBox } from "./types.ts";
 
 /**
- * The largest number of blocks in one answer. California has 86,623 blocks, so the full
- * state is one answer. The limit protects the browser when more data is loaded.
+ * The largest number of blocks in one answer. The limit is for the blocks of one year:
+ * California has 86,623 blocks in 2017 and 109,490 in 2018, so the full state is one answer.
+ * The limit protects the browser, and it keeps the answer below the size limit of the host.
  */
-export const MAX_BLOCKS = 100_000;
+export const MAX_BLOCKS = 115_000;
 
 /** The filters of the map. `null` = no filter. */
 export interface BlockFilters {

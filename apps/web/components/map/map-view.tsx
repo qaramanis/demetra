@@ -82,7 +82,7 @@ export default function MapView() {
   const labelLayerId = useLabelLayerId(basemap);
 
   /**
-   * The original geometry of each block, by block id. One answer can have 86,623 blocks, so
+   * The original geometry of each block, by block id. One answer can have more than 100,000 blocks, so
    * a click does not search the full list. In this file `Map` is the map component, so the
    * index uses `globalThis.Map`.
    */

@@ -23,10 +23,14 @@ export async function getBlocks(query: BlocksQuery): Promise<BlocksResponse> {
   // `&&` compares bounding boxes and uses the spatial index of `blocks.geom`.
   const inArea = sql`${blocks.geom} && ST_MakeEnvelope(${west}, ${south}, ${east}, ${north}, 4326)`;
 
+  // The limit is for the blocks of the selected year: the `blocks` table has the blocks of all
+  // the years, and a block is not in each year. In a year, a block has one row that is its main
+  // crop, so these rows give the number of blocks. The index `block_crops_main_idx` has them.
   const [total] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(blocks)
-    .where(inArea);
+    .from(blockCrops)
+    .innerJoin(blocks, eq(blocks.blockId, blockCrops.blockId))
+    .where(and(eq(blockCrops.year, year), eq(blockCrops.isBlockMainCrop, true), inArea));
   const count = total?.count ?? 0;
   if (count > MAX_BLOCKS) return { status: "tooMany", count, limit: MAX_BLOCKS };
   if (count === 0) return { status: "ok", rows: [] };

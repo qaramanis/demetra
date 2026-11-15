@@ -9,8 +9,8 @@ import type { Polygon, Position } from "geojson";
  * browser calculates them here. With the shapes, the answer for the full state has 25 MB.
  * Without them it has 3 MB.
  *
- * The data pipeline makes the same squares for the column `blocks.geom`. For all the 86,623
- * blocks of the database, the result of `blockSquare` is equal to `ST_AsGeoJSON(geom, 6)`:
+ * The data pipeline makes the same squares for the column `blocks.geom`. For all the 113,858
+ * blocks of the database (2017 and 2018), the result of `blockSquare` is equal to `ST_AsGeoJSON(geom, 6)`:
  * the same corners, in the same order. If the pipeline changes the grid, change the constants
  * here too.
  */

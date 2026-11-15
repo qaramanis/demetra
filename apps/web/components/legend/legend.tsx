@@ -30,7 +30,7 @@ function CropLegend() {
   const blocks = useBlocks().data;
   const cropIndex = useCropIndex();
 
-  // One answer can have 86,623 blocks. Count them again only when the blocks change.
+  // One answer can have more than 100,000 blocks. Count them again only when the blocks change.
   const counts = useMemo(() => {
     const byCrop = new Map<number, number>();
     for (const feature of blocks?.features ?? []) {
